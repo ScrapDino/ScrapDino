@@ -58,20 +58,18 @@
   <div class="card" id="authCard">
     <h1>⏱️ Speedrun Tracker</h1>
     <input type="text" id="username" placeholder="Pseudo du joueur" autocomplete="username" />
-    <input type="password" id="password" placeholder="Mot de passe" autocomplete="current-password" />
+    <input type="password" id="password" placeholder="Mot de passe (6 car. min)" autocomplete="current-password" />
     <button onclick="login()">Se connecter</button>
     <button class="secondary-btn" onclick="signUp()">Créer un compte</button>
     <div id="message"></div>
   </div>
 
   <script>
-    // --- TES IDENTIFIANTS SUPABASE ---
-    const SUPABASE_URL = "https://xvienxfcxunlyvejmnzv.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_VBWF6RKzyWLt0L1ANK9dAA_zZofxYi0I";
+    const SUPABASE_URL = "METS_TON_URL_SUPABASE_ICI";
+    const SUPABASE_ANON_KEY = "METS_TA_CLE_ANON_ICI";
 
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    // Transforme le pseudo en email technique propre (sans espaces, en minuscules)
     function pseudoToEmail(pseudo) {
       const clean = pseudo.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
       return `${clean}@speedrun.local`;
@@ -90,8 +88,7 @@
 
       const email = pseudoToEmail(pseudo);
 
-      // On transmet le vrai pseudo dans user_metadata
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await supabaseClient.auth.signUp({
         email,
         password,
         options: {
@@ -121,7 +118,7 @@
 
       const email = pseudoToEmail(pseudo);
 
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
         email,
         password
       });
