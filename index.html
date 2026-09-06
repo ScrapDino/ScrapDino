@@ -10,23 +10,24 @@
       font-family: Arial, sans-serif;
       background: #0f172a;
       color: #f8fafc;
+      margin: 0;
+      padding: 20px;
       display: flex;
       justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      margin: 0;
+    }
+    .container {
+      width: 100%;
+      max-width: 850px;
     }
     .card {
       background: #1e293b;
-      padding: 2rem;
+      padding: 1.5rem;
       border-radius: 12px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-      width: 100%;
-      max-width: 400px;
-      text-align: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.4);
+      margin-bottom: 20px;
     }
-    h1 { margin-bottom: 1.5rem; font-size: 1.5rem; }
-    input {
+    h1, h2, h3 { margin-top: 0; }
+    input, select {
       width: 100%;
       padding: 10px;
       margin: 8px 0;
@@ -37,9 +38,7 @@
       box-sizing: border-box;
     }
     button {
-      width: 100%;
-      padding: 10px;
-      margin-top: 10px;
+      padding: 10px 16px;
       border-radius: 6px;
       border: none;
       background: #3b82f6;
@@ -48,90 +47,365 @@
       cursor: pointer;
     }
     button:hover { background: #2563eb; }
-    .secondary-btn { background: #475569; margin-top: 5px; }
-    .secondary-btn:hover { background: #334155; }
-    #message { margin-top: 15px; font-size: 0.9rem; }
+    .btn-danger { background: #ef4444; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-success { background: #22c55e; }
+    .btn-success:hover { background: #16a34a; }
+    .secondary-btn { background: #475569; }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      background: #3b82f6;
+    }
+    .badge-admin { background: #eab308; color: black; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      text-align: left;
+      padding: 10px;
+      border-bottom: 1px solid #334155;
+    }
+    th { color: #94a3b8; }
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
 
-  <div class="card" id="authCard">
-    <h1>⏱️ Speedrun Tracker</h1>
+<div class="container">
+
+  <!-- VUE CONNEXION -->
+  <div class="card" id="authSection" style="max-width: 400px; margin: 60px auto;">
+    <h1 style="text-align: center;">⏱️ Speedrun Tracker</h1>
     <input type="text" id="username" placeholder="Pseudo du joueur" autocomplete="username" />
     <input type="password" id="password" placeholder="Mot de passe (6 car. min)" autocomplete="current-password" />
-    <button onclick="login()">Se connecter</button>
-    <button class="secondary-btn" onclick="signUp()">Créer un compte</button>
-    <div id="message"></div>
+    <button style="width: 100%; margin-top: 10px;" onclick="login()">Se connecter</button>
+    <div id="authMsg" style="margin-top: 10px; font-size: 0.9rem; text-align: center;"></div>
   </div>
 
-  <script>
-    const SUPABASE_URL = "https://xvienxfcxunlyvejmnzv.supabase.co";
-    const SUPABASE_ANON_KEY = "sb_publishable_VBWF6RKzyWLt0L1ANK9dAA_zZofxYi0";
+  <!-- VUE PRINCIPALE APRÈS CONNEXION -->
+  <div id="appSection" class="hidden">
+    <div class="header">
+      <div>
+        <h2 style="display: inline-block; margin: 0;" id="userGreeting">Bienvenue</h2>
+        <span id="userRoleBadge" class="badge"></span>
+      </div>
+      <button class="secondary-btn" onclick="logout()">Déconnexion</button>
+    </div>
 
-    const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    <!-- PANNEAU ADMIN (VISIBLE UNIQUEMENT SI ADMIN) -->
+    <div class="card hidden" id="adminPanel" style="border: 1px solid #eab308;">
+      <h3 style="color: #eab308;">👑 Panneau Administrateur</h3>
+      <div class="grid-2">
+        <div>
+          <h4>Ajouter un jeu</h4>
+          <input type="text" id="newGameTitle" placeholder="Ex: Super Mario 64" />
+          <button onclick="addGame()">Créer le jeu</button>
+        </div>
+        <div>
+          <h4>Ajouter une catégorie</h4>
+          <select id="gameSelectForCategory"></select>
+          <input type="text" id="newCategoryName" placeholder="Ex: Any%, 100%" />
+          <button onclick="addCategory()">Créer la catégorie</button>
+        </div>
+      </div>
 
-    function pseudoToEmail(pseudo) {
-      const clean = pseudo.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
-      return `${clean}@speedrun.com`;
+      <h4 style="margin-top: 20px;">Runs en attente de validation</h4>
+      <div id="pendingRunsList">Aucune run en attente.</div>
+    </div>
+
+    <!-- SOUMETTRE UN TEMPS (JOUEURS & ADMIN) -->
+    <div class="card">
+      <h3>🚀 Soumettre un temps</h3>
+      <div class="grid-2">
+        <div>
+          <label>Jeu :</label>
+          <select id="runGameSelect" onchange="loadCategoriesForRun()"></select>
+        </div>
+        <div>
+          <label>Catégorie :</label>
+          <select id="runCategorySelect"></select>
+        </div>
+      </div>
+      <div class="grid-2" style="margin-top: 10px;">
+        <div>
+          <label>Temps (secondes précises, ex: 124.50) :</label>
+          <input type="number" step="0.01" id="runTime" placeholder="Secondes" />
+        </div>
+        <div>
+          <label>Lien de la preuve (vidéo YouTube, Twitch) :</label>
+          <input type="url" id="runProof" placeholder="https://..." />
+        </div>
+      </div>
+      <button style="margin-top: 12px;" onclick="submitRun()">Envoyer le chrono</button>
+      <div id="runMsg" style="margin-top: 8px; font-size: 0.9rem;"></div>
+    </div>
+
+    <!-- CLASSEMENT PUBLIC -->
+    <div class="card">
+      <h3>🏆 Classement officiel</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Jeu</th>
+            <th>Catégorie</th>
+            <th>Joueur</th>
+            <th>Temps</th>
+            <th>Preuve</th>
+          </tr>
+        </thead>
+        <tbody id="leaderboardBody">
+          <tr><td colspan="5">Chargement des scores...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const SUPABASE_URL = "https://xvienxfcxunlyvejmnzv.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_VBWF6RKzyWLt0L1ANK9dAA_zZofxYi0";
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let currentUser = null;
+  let currentProfile = null;
+  let allGames = [];
+  let allCategories = [];
+
+  function pseudoToEmail(pseudo) {
+    const clean = pseudo.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
+    return `${clean}@speedrun.com`;
+  }
+
+  async function login() {
+    const pseudo = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const msg = document.getElementById('authMsg');
+
+    if (!pseudo || !password) {
+      msg.style.color = '#ef4444';
+      msg.innerText = "Champs requis.";
+      return;
     }
 
-    async function signUp() {
-      const pseudo = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value;
-      const msg = document.getElementById('message');
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email: pseudoToEmail(pseudo),
+      password
+    });
 
-      if (!pseudo || !password) {
-        msg.style.color = '#ef4444';
-        msg.innerText = "Remplis le pseudo et le mot de passe.";
-        return;
-      }
+    if (error) {
+      msg.style.color = '#ef4444';
+      msg.innerText = "Pseudo ou mot de passe incorrect.";
+    } else {
+      currentUser = data.user;
+      await initApp();
+    }
+  }
 
-      const email = pseudoToEmail(pseudo);
+  async function logout() {
+    await supabaseClient.auth.signOut();
+    location.reload();
+  }
 
-      const { data, error } = await supabaseClient.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { username: pseudo }
-        }
-      });
+  async function initApp() {
+    document.getElementById('authSection').classList.add('hidden');
+    document.getElementById('appSection').classList.remove('hidden');
 
-      if (error) {
-        msg.style.color = '#ef4444';
-        msg.innerText = error.message;
-      } else {
-        msg.style.color = '#22c55e';
-        msg.innerText = `Compte créé pour ${pseudo} ! Tu peux te connecter.`;
-      }
+    // Récupérer le profil et rôle
+    const { data: profile } = await supabaseClient
+      .from('profiles')
+      .select('*')
+      .eq('id', currentUser.id)
+      .single();
+
+    currentProfile = profile || { username: 'Joueur', role: 'player' };
+
+    document.getElementById('userGreeting').innerText = `Bonjour, ${currentProfile.username}`;
+    const badge = document.getElementById('userRoleBadge');
+    badge.innerText = currentProfile.role.toUpperCase();
+    if (currentProfile.role === 'admin') {
+      badge.classList.add('badge-admin');
+      document.getElementById('adminPanel').classList.remove('hidden');
+      loadPendingRuns();
     }
 
-    async function login() {
-      const pseudo = document.getElementById('username').value.trim();
-      const password = document.getElementById('password').value;
-      const msg = document.getElementById('message');
+    await loadGamesAndCategories();
+    await loadLeaderboard();
+  }
 
-      if (!pseudo || !password) {
-        msg.style.color = '#ef4444';
-        msg.innerText = "Remplis le pseudo et le mot de passe.";
-        return;
-      }
+  async function loadGamesAndCategories() {
+    const { data: games } = await supabaseClient.from('games').select('*').order('title');
+    const { data: categories } = await supabaseClient.from('categories').select('*');
 
-      const email = pseudoToEmail(pseudo);
+    allGames = games || [];
+    allCategories = categories || [];
 
-      const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-      });
+    const gameSelectAdmin = document.getElementById('gameSelectForCategory');
+    const gameSelectRun = document.getElementById('runGameSelect');
 
-      if (error) {
-        msg.style.color = '#ef4444';
-        msg.innerText = "Pseudo ou mot de passe incorrect.";
-      } else {
-        const username = data.user.user_metadata?.username || pseudo;
-        msg.style.color = '#22c55e';
-        msg.innerText = `Connecté en tant que ${username} !`;
-      }
+    gameSelectAdmin.innerHTML = '';
+    gameSelectRun.innerHTML = '<option value="">Sélectionner un jeu</option>';
+
+    allGames.forEach(g => {
+      gameSelectAdmin.innerHTML += `<option value="${g.id}">${g.title}</option>`;
+      gameSelectRun.innerHTML += `<option value="${g.id}">${g.title}</option>`;
+    });
+
+    loadCategoriesForRun();
+  }
+
+  function loadCategoriesForRun() {
+    const gameId = document.getElementById('runGameSelect').value;
+    const catSelect = document.getElementById('runCategorySelect');
+    catSelect.innerHTML = '';
+
+    const filtered = allCategories.filter(c => c.game_id == gameId);
+    filtered.forEach(c => {
+      catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+    });
+  }
+
+  async function addGame() {
+    const title = document.getElementById('newGameTitle').value.trim();
+    if (!title) return;
+    await supabaseClient.from('games').insert([{ title }]);
+    document.getElementById('newGameTitle').value = '';
+    await loadGamesAndCategories();
+  }
+
+  async function addCategory() {
+    const game_id = document.getElementById('gameSelectForCategory').value;
+    const name = document.getElementById('newCategoryName').value.trim();
+    if (!game_id || !name) return;
+    await supabaseClient.from('categories').insert([{ game_id, name }]);
+    document.getElementById('newCategoryName').value = '';
+    await loadGamesAndCategories();
+  }
+
+  async function submitRun() {
+    const category_id = document.getElementById('runCategorySelect').value;
+    const time_seconds = parseFloat(document.getElementById('runTime').value);
+    const proof_url = document.getElementById('runProof').value.trim();
+    const msg = document.getElementById('runMsg');
+
+    if (!category_id || isNaN(time_seconds)) {
+      msg.style.color = '#ef4444';
+      msg.innerText = "Sélectionne une catégorie et un chrono valide.";
+      return;
     }
-  </script>
+
+    const { error } = await supabaseClient.from('runs').insert([{
+      user_id: currentUser.id,
+      category_id,
+      time_seconds,
+      proof_url,
+      status: 'pending'
+    }]);
+
+    if (error) {
+      msg.style.color = '#ef4444';
+      msg.innerText = error.message;
+    } else {
+      msg.style.color = '#22c55e';
+      msg.innerText = "Chrono envoyé ! En attente de validation par l'admin.";
+      document.getElementById('runTime').value = '';
+      document.getElementById('runProof').value = '';
+      if (currentProfile.role === 'admin') loadPendingRuns();
+    }
+  }
+
+  async function loadLeaderboard() {
+    const { data: runs } = await supabaseClient
+      .from('runs')
+      .select(`
+        id,
+        time_seconds,
+        proof_url,
+        categories ( name, games ( title ) ),
+        profiles ( username )
+      `)
+      .eq('status', 'verified')
+      .order('time_seconds', { ascending: true });
+
+    const tbody = document.getElementById('leaderboardBody');
+    tbody.innerHTML = '';
+
+    if (!runs || runs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5">Aucun chrono validé pour le moment.</td></tr>';
+      return;
+    }
+
+    runs.forEach(r => {
+      tbody.innerHTML += `
+        <tr>
+          <td><strong>${r.categories?.games?.title || '-'}</strong></td>
+          <td>${r.categories?.name || '-'}</td>
+          <td>${r.profiles?.username || 'Anonyme'}</td>
+          <td>${r.time_seconds}s</td>
+          <td>${r.proof_url ? `<a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">Voir</a>` : '-'}</td>
+        </tr>
+      `;
+    });
+  }
+
+  async function loadPendingRuns() {
+    const { data: runs } = await supabaseClient
+      .from('runs')
+      .select(`
+        id,
+        time_seconds,
+        proof_url,
+        categories ( name, games ( title ) ),
+        profiles ( username )
+      `)
+      .eq('status', 'pending');
+
+    const container = document.getElementById('pendingRunsList');
+    container.innerHTML = '';
+
+    if (!runs || runs.length === 0) {
+      container.innerHTML = '<p style="color:#94a3b8;">Aucune run en attente.</p>';
+      return;
+    }
+
+    runs.forEach(r => {
+      container.innerHTML += `
+        <div style="background:#0f172a; padding:10px; border-radius:6px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <strong>${r.profiles?.username}</strong> — ${r.categories?.games?.title} (${r.categories?.name}) : <strong>${r.time_seconds}s</strong>
+            ${r.proof_url ? ` | <a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">Lien preuve</a>` : ''}
+          </div>
+          <div>
+            <button class="btn-success" onclick="updateRunStatus(${r.id}, 'verified')">Valider</button>
+            <button class="btn-danger" onclick="updateRunStatus(${r.id}, 'rejected')">Rejeter</button>
+          </div>
+        </div>
+      `;
+    });
+  }
+
+  async function updateRunStatus(runId, status) {
+    await supabaseClient.from('runs').update({ status }).eq('id', runId);
+    loadPendingRuns();
+    loadLeaderboard();
+  }
+</script>
 </body>
 </html>
