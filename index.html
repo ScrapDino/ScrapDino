@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Speedrun Tracker</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #f8fafc;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .card {
+      background: #1e293b;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    h1 { margin-bottom: 1.5rem; font-size: 1.5rem; }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: white;
+      box-sizing: border-box;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      border-radius: 6px;
+      border: none;
+      background: #3b82f6;
+      color: white;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    button:hover { background: #2563eb; }
+    .secondary-btn { background: #475569; margin-top: 5px; }
+    .secondary-btn:hover { background: #334155; }
+    #message { margin-top: 15px; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+  <div class="card" id="authCard">
+    <h1>⏱️ Speedrun Tracker</h1>
+    <input type="email" id="email" placeholder="Adresse email" />
+    <input type="password" id="password" placeholder="Mot de passe" />
+    <button onclick="login()">Se connecter</button>
+    <button class="secondary-btn" onclick="signUp()">Créer un compte</button>
+    <div id="message"></div>
+  </div>
+
+  <script>
+    // --- CONFIGURATION SUPABASE ---
+    const SUPABASE_URL = "https://xvienxfcxunlyvejmnzv.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_VBWF6RKzyWLt0L1ANK9dAA_zZofxYi0";
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    async function signUp() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const msg = document.getElementById('message');
+
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) {
+        msg.style.color = '#ef4444';
+        msg.innerText = error.message;
+      } else {
+        msg.style.color = '#22c55e';
+        msg.innerText = "Compte créé avec succès !";
+      }
+    }
+
+    async function login() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const msg = document.getElementById('message');
+
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        msg.style.color = '#ef4444';
+        msg.innerText = error.message;
+      } else {
+        msg.style.color = '#22c55e';
+        msg.innerText = "Connecté ! Bienvenue " + data.user.email;
+      }
+    }
+  </script>
+</body>
+</html>
