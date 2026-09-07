@@ -298,7 +298,6 @@
       <div class="card">
         <h3>🏆 Classement officiel</h3>
         
-        <!-- FILTRES JEU & CATÉGORIE -->
         <div class="filter-bar">
           <div class="filter-item">
             <label>Filtrer par jeu :</label>
@@ -332,7 +331,6 @@
       <div class="card">
         <h3>🟡 Segments BTT</h3>
 
-        <!-- FILTRES JEU & CATÉGORIE BTT -->
         <div class="filter-bar">
           <div class="filter-item">
             <label>Filtrer par jeu :</label>
@@ -428,12 +426,13 @@
       </div>
     </div>
 
-    <!-- ONGLET 4 : PROFILS -->
+    <!-- ONGLET 4 : PROFILS ET PB AVEC FILTRES -->
     <div id="tab-profile" class="tab-content hidden">
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
           <h3>👤 Fiche de profil</h3>
-          <div style="min-width: 200px;">
+          <div style="min-width: 220px;">
+            <label style="font-size:0.8rem; color:#94a3b8; font-weight:bold;">Voir le profil de :</label>
             <select id="profileViewerSelect" onchange="loadSelectedProfile(this.value)"></select>
           </div>
         </div>
@@ -443,6 +442,19 @@
           <p><strong>Rôle :</strong> <span id="profRole">-</span></p>
         </div>
 
+        <!-- FILTRES JEU & CATÉGORIE DU PROFIL -->
+        <div class="filter-bar">
+          <div class="filter-item">
+            <label>Filtrer par jeu :</label>
+            <select id="filterProfileGame" onchange="onProfileGameFilterChange()"></select>
+          </div>
+          <div class="filter-item">
+            <label>Filtrer par catégorie :</label>
+            <select id="filterProfileCategory" onchange="renderProfileRuns()"></select>
+          </div>
+        </div>
+
+        <!-- ZONE MEILLEUR TEMPS (PB) DYNAMIQUE -->
         <div class="pb-box">
           <div>
             <span style="color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; font-weight: bold;">⭐ Meilleur temps (PB)</span>
@@ -519,6 +531,7 @@
   let allCategories = [];
   let allProfiles = [];
   let cachedVerifiedRuns = [];
+  let currentProfileRuns = [];
 
   function pseudoToEmail(pseudo) {
     const clean = pseudo.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
@@ -682,17 +695,21 @@
   function populateFilterDropdowns() {
     const filterLGame = document.getElementById('filterLeaderboardGame');
     const filterBGame = document.getElementById('filterBttGame');
+    const filterPGame = document.getElementById('filterProfileGame');
 
     filterLGame.innerHTML = '<option value="">Tous les jeux</option>';
     filterBGame.innerHTML = '<option value="">Tous les jeux</option>';
+    filterPGame.innerHTML = '<option value="">Tous les jeux</option>';
 
     allGames.forEach(g => {
       filterLGame.innerHTML += `<option value="${g.id}">${g.title}</option>`;
       filterBGame.innerHTML += `<option value="${g.id}">${g.title}</option>`;
+      filterPGame.innerHTML += `<option value="${g.id}">${g.title}</option>`;
     });
 
     onGameFilterChange('leaderboard');
     onGameFilterChange('btt');
+    onProfileGameFilterChange();
   }
 
   function onGameFilterChange(type) {
@@ -718,6 +735,27 @@
     }
 
     renderLeaderboard();
+  }
+
+  function onProfileGameFilterChange() {
+    const gameSelect = document.getElementById('filterProfileGame');
+    const catSelect = document.getElementById('filterProfileCategory');
+    const selectedGameId = gameSelect.value;
+
+    catSelect.innerHTML = '<option value="">Toutes les catégories</option>';
+
+    if (selectedGameId) {
+      const filteredCats = allCategories.filter(c => c.game_id == selectedGameId);
+      filteredCats.forEach(c => {
+        catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+      });
+    } else {
+      allCategories.forEach(c => {
+        catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+      });
+    }
+
+    renderProfileRuns();
   }
 
   function loadCategoriesForRun() {
@@ -912,32 +950,47 @@
       .from('runs')
       .select(`
         id,
+        category_id,
         stage,
         time_seconds,
         proof_url,
         run_tag,
-        categories ( name, games ( title ) )
+        categories ( id, game_id, name, games ( id, title ) )
       `)
       .eq('user_id', userId)
       .eq('status', 'verified');
 
-    const tbody = document.getElementById('profileRunsBody');
-    tbody.innerHTML = '';
+    currentProfileRuns = runs || [];
+    renderProfileRuns();
+  }
 
+  function renderProfileRuns() {
+    const filterGame = document.getElementById('filterProfileGame').value;
+    const filterCat = document.getElementById('filterProfileCategory').value;
+
+    const filtered = currentProfileRuns.filter(r => {
+      if (filterGame && r.categories?.games?.id != filterGame) return false;
+      if (filterCat && r.category_id != filterCat) return false;
+      return true;
+    });
+
+    const tbody = document.getElementById('profileRunsBody');
     const pbDetails = document.getElementById('pbDetails');
     const pbTime = document.getElementById('pbTime');
+    tbody.innerHTML = '';
 
-    if (!runs || runs.length === 0) {
-      pbDetails.innerText = "Aucun temps validé";
+    if (filtered.length === 0) {
+      pbDetails.innerText = "Aucun chrono trouvé pour ce filtre";
       pbTime.innerText = "--:--.---";
-      tbody.innerHTML = '<tr><td colspan="3">Aucun chrono enregistré pour ce joueur.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="3">Aucune run ne correspond aux filtres sélectionnés.</td></tr>';
       return;
     }
 
-    let bestRun = runs[0];
-    let minSeconds = timeStringToSeconds(runs[0].time_seconds);
+    // Calcul du PB pour la sélection en cours
+    let bestRun = filtered[0];
+    let minSeconds = timeStringToSeconds(filtered[0].time_seconds);
 
-    runs.forEach(r => {
+    filtered.forEach(r => {
       const s = timeStringToSeconds(r.time_seconds);
       if (s < minSeconds) {
         minSeconds = s;
@@ -948,7 +1001,7 @@
     pbDetails.innerText = `${bestRun.stage ? '[' + bestRun.stage + '] ' : ''}${bestRun.categories?.games?.title || '-'} — ${bestRun.categories?.name || '-'}`;
     pbTime.innerText = bestRun.time_seconds;
 
-    runs.forEach(r => {
+    filtered.forEach(r => {
       let tagBadge = '';
       let rowClass = '';
       if (r.run_tag === 'WR') {
