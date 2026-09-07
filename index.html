@@ -26,7 +26,7 @@
       box-shadow: 0 10px 25px rgba(0,0,0,0.4);
       margin-bottom: 20px;
     }
-    h1, h2, h3 { margin-top: 0; }
+    h1, h2, h3, h4 { margin-top: 0; }
     input, select {
       width: 100%;
       padding: 10px;
@@ -52,11 +52,12 @@
     .btn-success { background: #22c55e; }
     .btn-success:hover { background: #16a34a; }
     .secondary-btn { background: #475569; }
+    .secondary-btn:hover { background: #334155; }
     .header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 15px;
     }
     .badge {
       display: inline-block;
@@ -127,12 +128,12 @@
       </div>
 
       <h4 style="margin-top: 20px;">Runs en attente de validation</h4>
-      <div id="pendingRunsList">Aucune run en attente.</div>
+      <div id="pendingRunsList">Chargement...</div>
     </div>
 
     <!-- SOUMETTRE UN TEMPS (JOUEURS & ADMIN) -->
     <div class="card">
-      <h3>🚀 Soumettre un temps</h3>
+      <h3>🚀 Soumettre un chrono</h3>
       <div class="grid-2">
         <div>
           <label>Jeu :</label>
@@ -145,11 +146,11 @@
       </div>
       <div class="grid-2" style="margin-top: 10px;">
         <div>
-          <label>Temps (secondes précises, ex: 124.50) :</label>
-          <input type="number" step="0.01" id="runTime" placeholder="Secondes" />
+          <label>Temps (format <code>MM:SS.ms</code> ex: <code>01:24.500</code>) :</label>
+          <input type="text" id="runTimeString" placeholder="00:00.000" />
         </div>
         <div>
-          <label>Lien de la preuve (vidéo YouTube, Twitch) :</label>
+          <label>Lien de la preuve (YouTube, Twitch...) :</label>
           <input type="url" id="runProof" placeholder="https://..." />
         </div>
       </div>
@@ -157,12 +158,28 @@
       <div id="runMsg" style="margin-top: 8px; font-size: 0.9rem;"></div>
     </div>
 
-    <!-- CLASSEMENT PUBLIC -->
+    <!-- CLASSEMENT OFFICIEL AVEC FILTRES -->
     <div class="card">
       <h3>🏆 Classement officiel</h3>
+      <div class="grid-2">
+        <div>
+          <label>Filtrer par Jeu :</label>
+          <select id="filterGameSelect" onchange="onFilterGameChange()">
+            <option value="all">Tous les jeux</option>
+          </select>
+        </div>
+        <div>
+          <label>Filtrer par Catégorie :</label>
+          <select id="filterCategorySelect" onchange="renderLeaderboard()">
+            <option value="all">Toutes les catégories</option>
+          </select>
+        </div>
+      </div>
+
       <table>
         <thead>
           <tr>
+            <th>Rang</th>
             <th>Jeu</th>
             <th>Catégorie</th>
             <th>Joueur</th>
@@ -171,7 +188,7 @@
           </tr>
         </thead>
         <tbody id="leaderboardBody">
-          <tr><td colspan="5">Chargement des scores...</td></tr>
+          <tr><td colspan="6">Chargement des scores...</td></tr>
         </tbody>
       </table>
     </div>
@@ -188,6 +205,46 @@
   let currentProfile = null;
   let allGames = [];
   let allCategories = [];
+  let verifiedRuns = [];
+
+  // --- FONCTIONS DE CONVERSION DE TEMPS ---
+  // Convertit "01:24.500" en secondes: 84.5
+  function parseTimeToSeconds(timeStr) {
+    if (!timeStr) return null;
+    const parts = timeStr.trim().split(':');
+    if (parts.length === 2) {
+      const min = parseFloat(parts[0]);
+      const sec = parseFloat(parts[1]);
+      if (isNaN(min) || isNaN(sec)) return null;
+      return (min * 60) + sec;
+    } else if (parts.length === 3) {
+      const h = parseFloat(parts[0]);
+      const min = parseFloat(parts[1]);
+      const sec = parseFloat(parts[2]);
+      if (isNaN(h) || isNaN(min) || isNaN(sec)) return null;
+      return (h * 3600) + (min * 60) + sec;
+    } else {
+      const sec = parseFloat(timeStr);
+      return isNaN(sec) ? null : sec;
+    }
+  }
+
+  // Convertit 84.5 secondes en "01:24.500"
+  function formatSecondsToTime(totalSec) {
+    if (totalSec == null || isNaN(totalSec)) return '-';
+    const hours = Math.floor(totalSec / 3600);
+    const minutes = Math.floor((totalSec % 3600) / 60);
+    const seconds = totalSec % 60;
+
+    const minStr = String(minutes).padStart(2, '0');
+    const secStr = seconds.toFixed(3).padStart(6, '0');
+
+    if (hours > 0) {
+      const hStr = String(hours).padStart(2, '0');
+      return `${hStr}:${minStr}:${secStr}`;
+    }
+    return `${minStr}:${secStr}`;
+  }
 
   function pseudoToEmail(pseudo) {
     const clean = pseudo.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
@@ -228,7 +285,6 @@
     document.getElementById('authSection').classList.add('hidden');
     document.getElementById('appSection').classList.remove('hidden');
 
-    // Récupérer le profil et rôle
     const { data: profile } = await supabaseClient
       .from('profiles')
       .select('*')
@@ -240,6 +296,7 @@
     document.getElementById('userGreeting').innerText = `Bonjour, ${currentProfile.username}`;
     const badge = document.getElementById('userRoleBadge');
     badge.innerText = currentProfile.role.toUpperCase();
+
     if (currentProfile.role === 'admin') {
       badge.classList.add('badge-admin');
       document.getElementById('adminPanel').classList.remove('hidden');
@@ -247,7 +304,7 @@
     }
 
     await loadGamesAndCategories();
-    await loadLeaderboard();
+    await fetchLeaderboard();
   }
 
   async function loadGamesAndCategories() {
@@ -257,18 +314,23 @@
     allGames = games || [];
     allCategories = categories || [];
 
+    // Sélecteurs formulaire soumission et admin
     const gameSelectAdmin = document.getElementById('gameSelectForCategory');
     const gameSelectRun = document.getElementById('runGameSelect');
+    const filterGameSelect = document.getElementById('filterGameSelect');
 
     gameSelectAdmin.innerHTML = '';
     gameSelectRun.innerHTML = '<option value="">Sélectionner un jeu</option>';
+    filterGameSelect.innerHTML = '<option value="all">Tous les jeux</option>';
 
     allGames.forEach(g => {
       gameSelectAdmin.innerHTML += `<option value="${g.id}">${g.title}</option>`;
       gameSelectRun.innerHTML += `<option value="${g.id}">${g.title}</option>`;
+      filterGameSelect.innerHTML += `<option value="${g.id}">${g.title}</option>`;
     });
 
     loadCategoriesForRun();
+    onFilterGameChange();
   }
 
   function loadCategoriesForRun() {
@@ -280,6 +342,20 @@
     filtered.forEach(c => {
       catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
     });
+  }
+
+  function onFilterGameChange() {
+    const gameId = document.getElementById('filterGameSelect').value;
+    const catSelect = document.getElementById('filterCategorySelect');
+    catSelect.innerHTML = '<option value="all">Toutes les catégories</option>';
+
+    if (gameId !== 'all') {
+      const filtered = allCategories.filter(c => c.game_id == gameId);
+      filtered.forEach(c => {
+        catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+      });
+    }
+    renderLeaderboard();
   }
 
   async function addGame() {
@@ -301,13 +377,15 @@
 
   async function submitRun() {
     const category_id = document.getElementById('runCategorySelect').value;
-    const time_seconds = parseFloat(document.getElementById('runTime').value);
+    const timeInput = document.getElementById('runTimeString').value;
     const proof_url = document.getElementById('runProof').value.trim();
     const msg = document.getElementById('runMsg');
 
-    if (!category_id || isNaN(time_seconds)) {
+    const time_seconds = parseTimeToSeconds(timeInput);
+
+    if (!category_id || time_seconds === null || time_seconds <= 0) {
       msg.style.color = '#ef4444';
-      msg.innerText = "Sélectionne une catégorie et un chrono valide.";
+      msg.innerText = "Format invalide. Utilise MM:SS.ms (ex: 01:23.450)";
       return;
     }
 
@@ -325,41 +403,62 @@
     } else {
       msg.style.color = '#22c55e';
       msg.innerText = "Chrono envoyé ! En attente de validation par l'admin.";
-      document.getElementById('runTime').value = '';
+      document.getElementById('runTimeString').value = '';
       document.getElementById('runProof').value = '';
       if (currentProfile.role === 'admin') loadPendingRuns();
     }
   }
 
-  async function loadLeaderboard() {
+  async function fetchLeaderboard() {
     const { data: runs } = await supabaseClient
       .from('runs')
       .select(`
         id,
         time_seconds,
         proof_url,
-        categories ( name, games ( title ) ),
+        category_id,
+        categories ( id, name, game_id, games ( id, title ) ),
         profiles ( username )
       `)
       .eq('status', 'verified')
       .order('time_seconds', { ascending: true });
 
+    verifiedRuns = runs || [];
+    renderLeaderboard();
+  }
+
+  function renderLeaderboard() {
+    const gameFilter = document.getElementById('filterGameSelect').value;
+    const catFilter = document.getElementById('filterCategorySelect').value;
     const tbody = document.getElementById('leaderboardBody');
+
+    let filtered = verifiedRuns.filter(r => {
+      const matchesGame = (gameFilter === 'all') || (r.categories?.games?.id == gameFilter);
+      const matchesCat = (catFilter === 'all') || (r.categories?.id == catFilter);
+      return matchesGame && matchesCat;
+    });
+
     tbody.innerHTML = '';
 
-    if (!runs || runs.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="5">Aucun chrono validé pour le moment.</td></tr>';
+    if (filtered.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6">Aucun score pour cette sélection.</td></tr>';
       return;
     }
 
-    runs.forEach(r => {
+    filtered.forEach((r, index) => {
+      let rankIcon = `#${index + 1}`;
+      if (index === 0) rankIcon = '🥇 1er';
+      if (index === 1) rankIcon = '🥈 2e';
+      if (index === 2) rankIcon = '🥉 3e';
+
       tbody.innerHTML += `
         <tr>
-          <td><strong>${r.categories?.games?.title || '-'}</strong></td>
+          <td><strong>${rankIcon}</strong></td>
+          <td>${r.categories?.games?.title || '-'}</td>
           <td>${r.categories?.name || '-'}</td>
-          <td>${r.profiles?.username || 'Anonyme'}</td>
-          <td>${r.time_seconds}s</td>
-          <td>${r.proof_url ? `<a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">Voir</a>` : '-'}</td>
+          <td><strong>${r.profiles?.username || 'Anonyme'}</strong></td>
+          <td style="font-family: monospace; font-size: 1.05rem; color: #38bdf8;">${formatSecondsToTime(r.time_seconds)}</td>
+          <td>${r.proof_url ? `<a href="${r.proof_url}" target="_blank" style="color:#60a5fa;">Lien vidéo</a>` : '-'}</td>
         </tr>
       `;
     });
@@ -389,8 +488,9 @@
       container.innerHTML += `
         <div style="background:#0f172a; padding:10px; border-radius:6px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
           <div>
-            <strong>${r.profiles?.username}</strong> — ${r.categories?.games?.title} (${r.categories?.name}) : <strong>${r.time_seconds}s</strong>
-            ${r.proof_url ? ` | <a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">Lien preuve</a>` : ''}
+            <strong>${r.profiles?.username}</strong> — ${r.categories?.games?.title} (${r.categories?.name}) : 
+            <strong style="color: #38bdf8; font-family: monospace;">${formatSecondsToTime(r.time_seconds)}</strong>
+            ${r.proof_url ? ` | <a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">Preuve</a>` : ''}
           </div>
           <div>
             <button class="btn-success" onclick="updateRunStatus(${r.id}, 'verified')">Valider</button>
@@ -404,7 +504,7 @@
   async function updateRunStatus(runId, status) {
     await supabaseClient.from('runs').update({ status }).eq('id', runId);
     loadPendingRuns();
-    loadLeaderboard();
+    await fetchLeaderboard();
   }
 </script>
 </body>
