@@ -128,6 +128,7 @@
       background: #3b82f6;
     }
     .badge-admin { background: #eab308; color: black; }
+    .badge-runner { background: #3b82f6; color: white; }
     .badge-stage {
       background: #334155;
       color: #f1f5f9;
@@ -263,12 +264,20 @@
 
 <div class="container">
 
-  <!-- CONNEXION -->
+  <!-- CONNEXION / INSCRIPTION -->
   <div class="card" id="authSection" style="max-width: 400px; margin: 60px auto;">
-    <h1 style="text-align: center;">⏱️ Speedrun Tracker</h1>
-    <input type="text" id="username" placeholder="Pseudo du joueur" autocomplete="username" />
+    <h1 style="text-align: center;" id="authTitle">⏱️ Speedrun Tracker</h1>
+    <input type="text" id="username" placeholder="Pseudo du runner" autocomplete="username" />
     <input type="password" id="password" placeholder="Mot de passe (6 car. min)" autocomplete="current-password" />
-    <button style="width: 100%; margin-top: 10px;" onclick="login()">Se connecter</button>
+    
+    <button style="width: 100%; margin-top: 10px;" id="authSubmitBtn" onclick="handleAuth()">Se connecter</button>
+    
+    <div style="text-align: center; margin-top: 15px;">
+      <a href="javascript:void(0)" id="authToggleLink" onclick="toggleAuthMode()" style="color: #38bdf8; font-size: 0.9rem; text-decoration: none;">
+        Pas encore de compte ? Créer un compte
+      </a>
+    </div>
+    
     <div id="authMsg" style="margin-top: 10px; font-size: 0.9rem; text-align: center;"></div>
   </div>
 
@@ -314,7 +323,7 @@
             <tr>
               <th>Palier</th>
               <th>Temps</th>
-              <th>Joueur</th>
+              <th>Runner</th>
               <th>Lien</th>
               <th class="admin-col hidden">Actions</th>
             </tr>
@@ -347,7 +356,7 @@
             <tr>
               <th>Palier</th>
               <th>Temps</th>
-              <th>Joueur</th>
+              <th>Runner</th>
               <th>Lien</th>
               <th class="admin-col hidden">Actions</th>
             </tr>
@@ -365,7 +374,7 @@
         <h3>🚀 Soumettre une run</h3>
 
         <div id="adminUserSelector" class="hidden" style="background:#0f172a; padding: 10px; border-radius: 8px; margin-bottom: 12px; border: 1px dashed #eab308;">
-          <label style="color:#eab308; font-weight:bold;">👑 Soumettre pour le joueur :</label>
+          <label style="color:#eab308; font-weight:bold;">👑 Soumettre pour le runner :</label>
           <select id="submitForUser"></select>
           <label style="display:flex; align-items:center; gap:8px; margin-top:8px; cursor:pointer;">
             <input type="checkbox" id="autoValidateCheck" style="width:auto; margin:0;" />
@@ -426,7 +435,7 @@
       </div>
     </div>
 
-    <!-- ONGLET 4 : PROFILS ET PB AVEC FILTRES -->
+    <!-- ONGLET 4 : PROFILS -->
     <div id="tab-profile" class="tab-content hidden">
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
@@ -438,11 +447,10 @@
         </div>
 
         <div style="margin-top: 10px;">
-          <p><strong>Joueur :</strong> <span id="profUsername" style="color: #38bdf8; font-size: 1.1rem; font-weight: bold;">-</span></p>
+          <p><strong>Runner :</strong> <span id="profUsername" style="color: #38bdf8; font-size: 1.1rem; font-weight: bold;">-</span></p>
           <p><strong>Rôle :</strong> <span id="profRole">-</span></p>
         </div>
 
-        <!-- FILTRES JEU & CATÉGORIE DU PROFIL -->
         <div class="filter-bar">
           <div class="filter-item">
             <label>Filtrer par jeu :</label>
@@ -454,7 +462,6 @@
           </div>
         </div>
 
-        <!-- ZONE MEILLEUR TEMPS (PB) DYNAMIQUE -->
         <div class="pb-box">
           <div>
             <span style="color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; font-weight: bold;">⭐ Meilleur temps (PB)</span>
@@ -463,7 +470,7 @@
           <div id="pbTime" style="font-size: 1.6rem; font-weight: bold; color: #22c55e; font-family: monospace;">--:--.---</div>
         </div>
 
-        <h4 style="margin-top: 25px;">Runs validées du joueur</h4>
+        <h4 style="margin-top: 25px;">Runs validées du runner</h4>
         <table>
           <thead>
             <tr>
@@ -532,10 +539,93 @@
   let allProfiles = [];
   let cachedVerifiedRuns = [];
   let currentProfileRuns = [];
+  let isSignUpMode = false;
 
   function pseudoToEmail(pseudo) {
     const clean = pseudo.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
     return `${clean}@speedrun.com`;
+  }
+
+  function toggleAuthMode() {
+    isSignUpMode = !isSignUpMode;
+    const title = document.getElementById('authTitle');
+    const submitBtn = document.getElementById('authSubmitBtn');
+    const link = document.getElementById('authToggleLink');
+    const msg = document.getElementById('authMsg');
+    msg.innerText = '';
+
+    if (isSignUpMode) {
+      title.innerText = "Créer un compte";
+      submitBtn.innerText = "S'inscrire";
+      link.innerText = "Déjà un compte ? Se connecter";
+    } else {
+      title.innerText = "⏱️ Speedrun Tracker";
+      submitBtn.innerText = "Se connecter";
+      link.innerText = "Pas encore de compte ? Créer un compte";
+    }
+  }
+
+  async function handleAuth() {
+    if (isSignUpMode) {
+      await register();
+    } else {
+      await login();
+    }
+  }
+
+  async function register() {
+    const pseudo = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const msg = document.getElementById('authMsg');
+
+    if (!pseudo || !password) {
+      msg.style.color = '#ef4444';
+      msg.innerText = "Pseudo et mot de passe requis.";
+      return;
+    }
+    if (password.length < 6) {
+      msg.style.color = '#ef4444';
+      msg.innerText = "Mot de passe de 6 caractères minimum.";
+      return;
+    }
+
+    msg.style.color = '#94a3b8';
+    msg.innerText = "Création du compte...";
+
+    const { data, error } = await supabaseClient.auth.signUp({
+      email: pseudoToEmail(pseudo),
+      password,
+      options: {
+        data: { username: pseudo }
+      }
+    });
+
+    if (error) {
+      msg.style.color = '#ef4444';
+      msg.innerText = error.message;
+      return;
+    }
+
+    // Si la session est créée directement (auto-confirm)
+    if (data.session) {
+      currentUser = data.session.user;
+      await initApp();
+    } else {
+      // Connexion immédiate au cas où
+      const { data: logData, error: logErr } = await supabaseClient.auth.signInWithPassword({
+        email: pseudoToEmail(pseudo),
+        password
+      });
+
+      if (!logErr && logData.session) {
+        currentUser = logData.session.user;
+        await initApp();
+      } else {
+        msg.style.color = '#22c55e';
+        msg.innerText = "Compte créé avec succès ! Connecte-toi.";
+        toggleAuthMode();
+      }
+    }
   }
 
   function timeStringToSeconds(tStr) {
@@ -632,7 +722,7 @@
       .eq('id', currentUser.id)
       .single();
 
-    currentProfile = profile || { username: 'Joueur', role: 'player' };
+    currentProfile = profile || { username: 'Runner', role: 'runner' };
 
     document.getElementById('userGreeting').innerText = `Bonjour, ${currentProfile.username}`;
     const badge = document.getElementById('userRoleBadge');
@@ -644,6 +734,8 @@
       document.getElementById('adminUserSelector').classList.remove('hidden');
       document.querySelectorAll('.admin-col').forEach(el => el.classList.remove('hidden'));
       loadPendingRuns();
+    } else {
+      badge.classList.add('badge-runner');
     }
 
     await loadAllProfiles();
@@ -942,7 +1034,7 @@
   async function loadSelectedProfile(userId) {
     if (!userId) return;
 
-    const userProfile = allProfiles.find(p => p.id === userId) || { username: 'Inconnu', role: 'player' };
+    const userProfile = allProfiles.find(p => p.id === userId) || { username: 'Inconnu', role: 'runner' };
     document.getElementById('profUsername').innerText = userProfile.username;
     document.getElementById('profRole').innerText = userProfile.role.toUpperCase();
 
@@ -986,7 +1078,6 @@
       return;
     }
 
-    // Calcul du PB pour la sélection en cours
     let bestRun = filtered[0];
     let minSeconds = timeStringToSeconds(filtered[0].time_seconds);
 
