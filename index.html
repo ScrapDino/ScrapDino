@@ -26,7 +26,7 @@
       box-shadow: 0 10px 25px rgba(0,0,0,0.4);
       margin-bottom: 20px;
     }
-    h1, h2, h3, h4 { margin-top: 0; }
+    h1, h2, h3, h4, h5 { margin-top: 0; }
     input, select {
       width: 100%;
       padding: 10px;
@@ -55,7 +55,6 @@
     .btn-edit:hover { background: #4f46e5; }
     .secondary-btn { background: #475569; }
 
-    /* NAVIGATION PAR ONGLETS PRINCIPAUX */
     .nav-tabs {
       display: flex;
       gap: 10px;
@@ -75,10 +74,7 @@
       cursor: pointer;
       transition: all 0.2s;
     }
-    .tab-btn:hover {
-      background: #334155;
-      color: white;
-    }
+    .tab-btn:hover { background: #334155; color: white; }
     .tab-btn.active {
       background: #3b82f6;
       color: white;
@@ -93,7 +89,6 @@
       color: black;
     }
 
-    /* SOUS-ONGLETS ADMIN */
     .admin-subnav {
       display: flex;
       gap: 10px;
@@ -111,9 +106,7 @@
       font-weight: bold;
       cursor: pointer;
     }
-    .admin-subtab-btn:hover {
-      background: #1e293b;
-    }
+    .admin-subtab-btn:hover { background: #1e293b; }
     .admin-subtab-btn.active {
       background: #eab308;
       color: black;
@@ -135,6 +128,15 @@
       background: #3b82f6;
     }
     .badge-admin { background: #eab308; color: black; }
+    .badge-stage {
+      background: #334155;
+      color: #f1f5f9;
+      font-size: 0.85rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: inline-block;
+      border: 1px solid #475569;
+    }
     
     .badge-wr {
       background: #ef4444;
@@ -143,6 +145,7 @@
       padding: 3px 8px;
       border-radius: 4px;
       display: inline-block;
+      margin-right: 6px;
     }
     .badge-btt {
       background: #eab308;
@@ -151,6 +154,7 @@
       padding: 3px 8px;
       border-radius: 4px;
       display: inline-block;
+      margin-right: 6px;
     }
 
     .row-wr {
@@ -178,6 +182,11 @@
       grid-template-columns: 1fr 1fr;
       gap: 15px;
     }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 15px;
+    }
     .hidden { display: none !important; }
     .radio-group {
       display: flex;
@@ -202,9 +211,7 @@
       cursor: pointer;
       text-decoration: underline;
     }
-    .user-link:hover {
-      color: #7dd3fc;
-    }
+    .user-link:hover { color: #7dd3fc; }
 
     .pb-box {
       background: #0f172a;
@@ -250,7 +257,7 @@
       <button class="secondary-btn" onclick="logout()">Déconnexion</button>
     </div>
 
-    <!-- BARRE D'ONGLETS PRINCIPALE -->
+    <!-- ONGLETS -->
     <div class="nav-tabs">
       <button class="tab-btn active" onclick="switchTab('tab-leaderboard')">🏆 Classement</button>
       <button class="tab-btn" onclick="switchTab('tab-btt')">🟡 BTT</button>
@@ -268,17 +275,15 @@
         <table>
           <thead>
             <tr>
-              <th>Tag</th>
-              <th>Jeu</th>
-              <th>Catégorie</th>
-              <th>Joueur</th>
+              <th>Palier</th>
               <th>Temps</th>
-              <th>Preuve</th>
+              <th>Joueur</th>
+              <th>Lien</th>
               <th class="admin-col hidden">Actions</th>
             </tr>
           </thead>
           <tbody id="leaderboardBody">
-            <tr><td colspan="7">Chargement des scores...</td></tr>
+            <tr><td colspan="5">Chargement des scores...</td></tr>
           </tbody>
         </table>
       </div>
@@ -291,17 +296,15 @@
         <table>
           <thead>
             <tr>
-              <th>Tag</th>
-              <th>Jeu</th>
-              <th>Catégorie</th>
-              <th>Joueur</th>
+              <th>Palier</th>
               <th>Temps</th>
-              <th>Preuve</th>
+              <th>Joueur</th>
+              <th>Lien</th>
               <th class="admin-col hidden">Actions</th>
             </tr>
           </thead>
           <tbody id="bttBody">
-            <tr><td colspan="7">Chargement des segments...</td></tr>
+            <tr><td colspan="5">Chargement des segments...</td></tr>
           </tbody>
         </table>
       </div>
@@ -321,7 +324,7 @@
           </label>
         </div>
 
-        <div class="grid-2">
+        <div class="grid-3">
           <div>
             <label>Jeu :</label>
             <select id="runGameSelect" onchange="loadCategoriesForRun()"></select>
@@ -329,6 +332,22 @@
           <div>
             <label>Catégorie :</label>
             <select id="runCategorySelect"></select>
+          </div>
+          <div>
+            <label>Palier :</label>
+            <select id="runStageSelect">
+              <option value="Tuto">Tuto</option>
+              <option value="Door skip">Door skip</option>
+              <option value="étage 1">étage 1</option>
+              <option value="GBE">GBE</option>
+              <option value="cube room">cube room</option>
+              <option value="lucky cube">lucky cube</option>
+              <option value="étage 2">étage 2</option>
+              <option value="SRK">SRK</option>
+              <option value="sortie zone conta">sortie zone conta</option>
+              <option value="CLC">CLC</option>
+              <option value="SC">SC</option>
+            </select>
           </div>
         </div>
 
@@ -357,7 +376,7 @@
       </div>
     </div>
 
-    <!-- ONGLET 4 : PROFILS ET PB -->
+    <!-- ONGLET 4 : PROFILS -->
     <div id="tab-profile" class="tab-content hidden">
       <div class="card">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
@@ -384,28 +403,23 @@
         <table>
           <thead>
             <tr>
-              <th>Tag</th>
-              <th>Jeu</th>
-              <th>Catégorie</th>
+              <th>Palier</th>
               <th>Temps</th>
-              <th>Preuve</th>
+              <th>Lien</th>
             </tr>
           </thead>
           <tbody id="profileRunsBody">
-            <tr><td colspan="5">Sélectionne un profil.</td></tr>
+            <tr><td colspan="3">Sélectionne un profil.</td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- ONGLET 5 : ADMIN (AVEC LES 2 SECTIONS) -->
+    <!-- ONGLET 5 : ADMIN -->
     <div id="tab-admin" class="tab-content hidden">
       <div class="card" style="border: 1px solid #eab308;">
-        <div class="header">
-          <h3 style="color: #eab308; margin: 0;">👑 Espace Administration</h3>
-        </div>
+        <h3 style="color: #eab308;">👑 Espace Administration</h3>
 
-        <!-- SOUS-NAVIGATION ADMIN -->
         <div class="admin-subnav">
           <button class="admin-subtab-btn active" id="btnAdminMain" onclick="switchAdminSubTab('admin-main')">⚙️ Principal (Jeux & Catégories)</button>
           <button class="admin-subtab-btn" id="btnAdminVerify" onclick="switchAdminSubTab('admin-verify')">
@@ -413,7 +427,6 @@
           </button>
         </div>
 
-        <!-- SOUS-SECTION 1 : PRINCIPALE (JEUX & CATÉGORIES) -->
         <div id="admin-main" class="admin-section">
           <h4>Gestion du contenu</h4>
           <div class="grid-2">
@@ -431,7 +444,6 @@
           </div>
         </div>
 
-        <!-- SOUS-SECTION 2 : VÉRIFICATION DE RUNS -->
         <div id="admin-verify" class="admin-section hidden">
           <h4>Runs en attente de vérification</h4>
           <div id="pendingRunsList">Aucune run en attente.</div>
@@ -500,7 +512,6 @@
     }
   }
 
-  // NAVIGATION ENTRE LES 2 SOUS-SECTIONS ADMIN
   function switchAdminSubTab(subTabId) {
     document.querySelectorAll('.admin-section').forEach(el => el.classList.add('hidden'));
     document.querySelectorAll('.admin-subtab-btn').forEach(btn => btn.classList.remove('active'));
@@ -646,6 +657,7 @@
 
   async function submitRun() {
     const category_id = document.getElementById('runCategorySelect').value;
+    const stage = document.getElementById('runStageSelect').value;
     const rawTime = document.getElementById('runTime').value.trim();
     const proof_url = document.getElementById('runProof').value.trim();
     const msg = document.getElementById('runMsg');
@@ -671,6 +683,7 @@
     const { error } = await supabaseClient.from('runs').insert([{
       user_id: targetUserId,
       category_id,
+      stage,
       time_seconds: rawTime,
       proof_url,
       status: targetStatus,
@@ -697,6 +710,7 @@
       .select(`
         id,
         user_id,
+        stage,
         time_seconds,
         proof_url,
         run_tag,
@@ -717,12 +731,12 @@
 
     function renderRows(list, container) {
       if (list.length === 0) {
-        container.innerHTML = `<tr><td colspan="${isAdmin ? 7 : 6}">Aucun chrono validé.</td></tr>`;
+        container.innerHTML = `<tr><td colspan="${isAdmin ? 5 : 4}">Aucun chrono validé.</td></tr>`;
         return;
       }
 
       list.forEach(r => {
-        let tagBadge = '-';
+        let tagBadge = '';
         let rowClass = '';
         if (r.run_tag === 'WR') {
           tagBadge = '<span class="badge-wr">🔴 WR</span>';
@@ -743,13 +757,14 @@
         }
 
         const username = r.profiles?.username || 'Anonyme';
+        const displayStage = r.stage || 'Général';
+
+        // ORDRE : PALIER | TEMPS | JOUEUR | LIENS
         container.innerHTML += `
           <tr class="${rowClass}">
-            <td>${tagBadge}</td>
-            <td><strong>${r.categories?.games?.title || '-'}</strong></td>
-            <td>${r.categories?.name || '-'}</td>
-            <td><span class="user-link" onclick="openUserProfile('${r.user_id}')">${username}</span></td>
+            <td>${tagBadge}<span class="badge-stage">${displayStage}</span></td>
             <td><strong style="font-family:monospace; font-size:1.1rem;">${r.time_seconds}</strong></td>
+            <td><span class="user-link" onclick="openUserProfile('${r.user_id}')">${username}</span></td>
             <td>${r.proof_url ? `<a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">Voir vidéo</a>` : '-'}</td>
             ${actionsHtml}
           </tr>
@@ -779,6 +794,7 @@
       .from('runs')
       .select(`
         id,
+        stage,
         time_seconds,
         proof_url,
         run_tag,
@@ -796,7 +812,7 @@
     if (!runs || runs.length === 0) {
       pbDetails.innerText = "Aucun temps validé";
       pbTime.innerText = "--:--.---";
-      tbody.innerHTML = '<tr><td colspan="5">Aucun chrono enregistré pour ce joueur.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="3">Aucun chrono enregistré pour ce joueur.</td></tr>';
       return;
     }
 
@@ -811,11 +827,11 @@
       }
     });
 
-    pbDetails.innerText = `${bestRun.categories?.games?.title || '-'} — ${bestRun.categories?.name || '-'}`;
+    pbDetails.innerText = `${bestRun.stage ? '[' + bestRun.stage + '] ' : ''}${bestRun.categories?.games?.title || '-'} — ${bestRun.categories?.name || '-'}`;
     pbTime.innerText = bestRun.time_seconds;
 
     runs.forEach(r => {
-      let tagBadge = '-';
+      let tagBadge = '';
       let rowClass = '';
       if (r.run_tag === 'WR') {
         tagBadge = '<span class="badge-wr">🔴 WR</span>';
@@ -827,9 +843,7 @@
 
       tbody.innerHTML += `
         <tr class="${rowClass}">
-          <td>${tagBadge}</td>
-          <td><strong>${r.categories?.games?.title || '-'}</strong></td>
-          <td>${r.categories?.name || '-'}</td>
+          <td>${tagBadge}<span class="badge-stage">${r.stage || 'Général'}</span></td>
           <td><strong style="font-family:monospace; font-size:1.05rem;">${r.time_seconds}</strong></td>
           <td>${r.proof_url ? `<a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">Voir vidéo</a>` : '-'}</td>
         </tr>
@@ -837,12 +851,12 @@
     });
   }
 
-  // CHARGEMENT DE LA SOUS-SECTION VÉRIFICATION DE RUNS
   async function loadPendingRuns() {
     const { data: runs } = await supabaseClient
       .from('runs')
       .select(`
         id,
+        stage,
         time_seconds,
         proof_url,
         run_tag,
@@ -884,7 +898,7 @@
         blockClass = 'row-wr';
       } else if (r.run_tag === 'BTT') {
         borderStyle = '#eab308';
-        tagBadge = '<span class="badge-btt">🟡 BTT Segment</span>';
+        tagBadge = '<span class="badge-btt">🟡 BTT</span>';
         blockClass = 'row-btt';
       }
 
@@ -892,9 +906,10 @@
         <div class="${blockClass}" style="background:#0f172a; border-left: 5px solid ${borderStyle}; padding:12px; border-radius:6px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
           <div>
             ${tagBadge ? tagBadge + ' ' : ''}
-            <strong>${r.profiles?.username}</strong> — ${r.categories?.games?.title} (${r.categories?.name}) : 
+            <span class="badge-stage">${r.stage || 'Général'}</span>
+            <strong>${r.profiles?.username}</strong> : 
             <strong style="color:#38bdf8; font-family:monospace; font-size:1.1rem;">${r.time_seconds}</strong>
-            ${r.proof_url ? ` | <a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">📺 Vidéo</a>` : ''}
+            ${r.proof_url ? ` | <a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">📺 Lien</a>` : ''}
           </div>
           <div style="display:flex; gap:6px;">
             <button class="btn-edit" onclick="editRunTime(${r.id}, '${r.time_seconds}')">✏️ Modifier</button>
