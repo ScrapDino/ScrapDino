@@ -55,7 +55,7 @@
     .btn-edit:hover { background: #4f46e5; }
     .secondary-btn { background: #475569; }
 
-    /* NAVIGATION PAR ONGLETS */
+    /* NAVIGATION PAR ONGLETS PRINCIPAUX */
     .nav-tabs {
       display: flex;
       gap: 10px;
@@ -91,6 +91,33 @@
     .tab-btn.admin-tab.active {
       background: #eab308;
       color: black;
+    }
+
+    /* SOUS-ONGLETS ADMIN */
+    .admin-subnav {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #475569;
+      padding-bottom: 10px;
+    }
+    .admin-subtab-btn {
+      background: #0f172a;
+      color: #cbd5e1;
+      border: 1px solid #475569;
+      border-radius: 6px;
+      padding: 8px 14px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .admin-subtab-btn:hover {
+      background: #1e293b;
+    }
+    .admin-subtab-btn.active {
+      background: #eab308;
+      color: black;
+      border-color: #eab308;
     }
 
     .header {
@@ -189,6 +216,15 @@
       justify-content: space-between;
       align-items: center;
     }
+
+    .counter-pill {
+      background: #ef4444;
+      color: white;
+      font-size: 0.75rem;
+      border-radius: 10px;
+      padding: 2px 7px;
+      margin-left: 6px;
+    }
   </style>
 </head>
 <body>
@@ -214,13 +250,15 @@
       <button class="secondary-btn" onclick="logout()">Déconnexion</button>
     </div>
 
-    <!-- BARRE D'ONGLETS -->
+    <!-- BARRE D'ONGLETS PRINCIPALE -->
     <div class="nav-tabs">
       <button class="tab-btn active" onclick="switchTab('tab-leaderboard')">🏆 Classement</button>
       <button class="tab-btn" onclick="switchTab('tab-btt')">🟡 BTT</button>
       <button class="tab-btn" onclick="switchTab('tab-submit')">🚀 Soumettre run</button>
       <button class="tab-btn" onclick="switchTab('tab-profile')">👤 Profils</button>
-      <button class="tab-btn admin-tab hidden" id="tabBtnAdmin" onclick="switchTab('tab-admin')">👑 Admin</button>
+      <button class="tab-btn admin-tab hidden" id="tabBtnAdmin" onclick="switchTab('tab-admin')">
+        👑 Admin <span id="adminPendingBadge" class="counter-pill hidden">0</span>
+      </button>
     </div>
 
     <!-- ONGLET 1 : CLASSEMENT -->
@@ -269,7 +307,7 @@
       </div>
     </div>
 
-    <!-- ONGLET 3 : SOUMETTRE -->
+    <!-- ONGLET 3 : SOUMETTRE RUN -->
     <div id="tab-submit" class="tab-content hidden">
       <div class="card">
         <h3>🚀 Soumettre une run</h3>
@@ -334,7 +372,6 @@
           <p><strong>Rôle :</strong> <span id="profRole">-</span></p>
         </div>
 
-        <!-- ZONE MEILLEUR TEMPS (PB) -->
         <div class="pb-box">
           <div>
             <span style="color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; font-weight: bold;">⭐ Meilleur temps (PB)</span>
@@ -361,26 +398,45 @@
       </div>
     </div>
 
-    <!-- ONGLET 5 : ADMIN -->
+    <!-- ONGLET 5 : ADMIN (AVEC LES 2 SECTIONS) -->
     <div id="tab-admin" class="tab-content hidden">
       <div class="card" style="border: 1px solid #eab308;">
-        <h3 style="color: #eab308;">👑 Panneau Administrateur</h3>
-        <div class="grid-2">
-          <div>
-            <h4>Ajouter un jeu</h4>
-            <input type="text" id="newGameTitle" placeholder="Ex: Shutter" />
-            <button onclick="addGame()">Créer le jeu</button>
-          </div>
-          <div>
-            <h4>Ajouter une catégorie</h4>
-            <select id="gameSelectForCategory"></select>
-            <input type="text" id="newCategoryName" placeholder="Ex: NMG, Any%" />
-            <button onclick="addCategory()">Créer la catégorie</button>
+        <div class="header">
+          <h3 style="color: #eab308; margin: 0;">👑 Espace Administration</h3>
+        </div>
+
+        <!-- SOUS-NAVIGATION ADMIN -->
+        <div class="admin-subnav">
+          <button class="admin-subtab-btn active" id="btnAdminMain" onclick="switchAdminSubTab('admin-main')">⚙️ Principal (Jeux & Catégories)</button>
+          <button class="admin-subtab-btn" id="btnAdminVerify" onclick="switchAdminSubTab('admin-verify')">
+            ⏳ Vérification de runs <span id="subtabPendingCount" class="counter-pill hidden">0</span>
+          </button>
+        </div>
+
+        <!-- SOUS-SECTION 1 : PRINCIPALE (JEUX & CATÉGORIES) -->
+        <div id="admin-main" class="admin-section">
+          <h4>Gestion du contenu</h4>
+          <div class="grid-2">
+            <div>
+              <h5 style="margin: 5px 0 10px 0; color: #94a3b8;">Ajouter un jeu</h5>
+              <input type="text" id="newGameTitle" placeholder="Ex: Shutter" />
+              <button onclick="addGame()">Créer le jeu</button>
+            </div>
+            <div>
+              <h5 style="margin: 5px 0 10px 0; color: #94a3b8;">Ajouter une catégorie</h5>
+              <select id="gameSelectForCategory"></select>
+              <input type="text" id="newCategoryName" placeholder="Ex: NMG, Any%" />
+              <button onclick="addCategory()">Créer la catégorie</button>
+            </div>
           </div>
         </div>
 
-        <h4 style="margin-top: 25px;">⏳ Runs en attente de vérification</h4>
-        <div id="pendingRunsList">Aucune run en attente.</div>
+        <!-- SOUS-SECTION 2 : VÉRIFICATION DE RUNS -->
+        <div id="admin-verify" class="admin-section hidden">
+          <h4>Runs en attente de vérification</h4>
+          <div id="pendingRunsList">Aucune run en attente.</div>
+        </div>
+
       </div>
     </div>
 
@@ -404,7 +460,6 @@
     return `${clean}@speedrun.com`;
   }
 
-  // Conversion pour calculer le vrai PB (minimum absolu)
   function timeStringToSeconds(tStr) {
     if (!tStr) return Infinity;
     const parts = tStr.trim().replace(',', '.').split(':');
@@ -442,6 +497,21 @@
         viewer.value = currentUser.id;
       }
       loadSelectedProfile(viewer.value || currentUser.id);
+    }
+  }
+
+  // NAVIGATION ENTRE LES 2 SOUS-SECTIONS ADMIN
+  function switchAdminSubTab(subTabId) {
+    document.querySelectorAll('.admin-section').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.admin-subtab-btn').forEach(btn => btn.classList.remove('active'));
+
+    document.getElementById(subTabId).classList.remove('hidden');
+
+    if (subTabId === 'admin-main') {
+      document.getElementById('btnAdminMain').classList.add('active');
+    } else if (subTabId === 'admin-verify') {
+      document.getElementById('btnAdminVerify').classList.add('active');
+      loadPendingRuns();
     }
   }
 
@@ -561,6 +631,7 @@
     await supabaseClient.from('games').insert([{ title }]);
     document.getElementById('newGameTitle').value = '';
     await loadGamesAndCategories();
+    alert("Jeu créé avec succès !");
   }
 
   async function addCategory() {
@@ -570,6 +641,7 @@
     await supabaseClient.from('categories').insert([{ game_id, name }]);
     document.getElementById('newCategoryName').value = '';
     await loadGamesAndCategories();
+    alert("Catégorie créée avec succès !");
   }
 
   async function submitRun() {
@@ -610,7 +682,7 @@
       msg.innerText = error.message;
     } else {
       msg.style.color = '#22c55e';
-      msg.innerText = targetStatus === 'verified' ? "Chrono validé et publié !" : "Chrono envoyé ! En attente.";
+      msg.innerText = targetStatus === 'verified' ? "Chrono validé et publié !" : "Chrono envoyé ! En attente de validation.";
       document.getElementById('runTime').value = '';
       document.getElementById('runProof').value = '';
       document.querySelector('input[name="runTag"][value=""]').checked = true;
@@ -728,7 +800,6 @@
       return;
     }
 
-    // Calcul du PB (meilleur temps absolu)
     let bestRun = runs[0];
     let minSeconds = timeStringToSeconds(runs[0].time_seconds);
 
@@ -766,6 +837,7 @@
     });
   }
 
+  // CHARGEMENT DE LA SOUS-SECTION VÉRIFICATION DE RUNS
   async function loadPendingRuns() {
     const { data: runs } = await supabaseClient
       .from('runs')
@@ -779,11 +851,25 @@
       `)
       .eq('status', 'pending');
 
+    const count = runs ? runs.length : 0;
+    const badgeTab = document.getElementById('adminPendingBadge');
+    const badgeSubtab = document.getElementById('subtabPendingCount');
+
+    if (count > 0) {
+      badgeTab.innerText = count;
+      badgeTab.classList.remove('hidden');
+      badgeSubtab.innerText = count;
+      badgeSubtab.classList.remove('hidden');
+    } else {
+      badgeTab.classList.add('hidden');
+      badgeSubtab.classList.add('hidden');
+    }
+
     const container = document.getElementById('pendingRunsList');
     container.innerHTML = '';
 
     if (!runs || runs.length === 0) {
-      container.innerHTML = '<p style="color:#94a3b8;">Aucune run en attente.</p>';
+      container.innerHTML = '<p style="color:#94a3b8;">Aucune run en attente de vérification.</p>';
       return;
     }
 
