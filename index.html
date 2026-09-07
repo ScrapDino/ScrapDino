@@ -169,6 +169,26 @@
       width: auto;
       margin: 0;
     }
+
+    .user-link {
+      color: #38bdf8;
+      cursor: pointer;
+      text-decoration: underline;
+    }
+    .user-link:hover {
+      color: #7dd3fc;
+    }
+
+    .pb-box {
+      background: #0f172a;
+      border: 1px solid #3b82f6;
+      border-radius: 8px;
+      padding: 15px;
+      margin: 15px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
   </style>
 </head>
 <body>
@@ -199,11 +219,11 @@
       <button class="tab-btn active" onclick="switchTab('tab-leaderboard')">🏆 Classement</button>
       <button class="tab-btn" onclick="switchTab('tab-btt')">🟡 BTT</button>
       <button class="tab-btn" onclick="switchTab('tab-submit')">🚀 Soumettre run</button>
-      <button class="tab-btn" onclick="switchTab('tab-profile')">👤 Profil</button>
+      <button class="tab-btn" onclick="switchTab('tab-profile')">👤 Profils</button>
       <button class="tab-btn admin-tab hidden" id="tabBtnAdmin" onclick="switchTab('tab-admin')">👑 Admin</button>
     </div>
 
-    <!-- ONGLET 1 : CLASSEMENT OFFICIEL (HORS BTT) -->
+    <!-- ONGLET 1 : CLASSEMENT -->
     <div id="tab-leaderboard" class="tab-content">
       <div class="card">
         <h3>🏆 Classement officiel</h3>
@@ -226,7 +246,7 @@
       </div>
     </div>
 
-    <!-- ONGLET 2 : BTT (BEST TIME TRACKER) -->
+    <!-- ONGLET 2 : BTT -->
     <div id="tab-btt" class="tab-content hidden">
       <div class="card">
         <h3>🟡 Segments BTT</h3>
@@ -249,7 +269,7 @@
       </div>
     </div>
 
-    <!-- ONGLET 3 : SOUMETTRE UNE RUN -->
+    <!-- ONGLET 3 : SOUMETTRE -->
     <div id="tab-submit" class="tab-content hidden">
       <div class="card">
         <h3>🚀 Soumettre une run</h3>
@@ -299,16 +319,45 @@
       </div>
     </div>
 
-    <!-- ONGLET 4 : PROFIL -->
+    <!-- ONGLET 4 : PROFILS ET PB -->
     <div id="tab-profile" class="tab-content hidden">
       <div class="card">
-        <h3>👤 Mon profil</h3>
-        <p><strong>Pseudo :</strong> <span id="profUsername">-</span></p>
-        <p><strong>Rôle :</strong> <span id="profRole">-</span></p>
-        <p><strong>Identifiant :</strong> <code id="profId" style="color: #94a3b8;">-</code></p>
-        <hr style="border: 0; border-top: 1px solid #334155; margin: 15px 0;" />
-        <h4>Mes runs validées</h4>
-        <div id="myRunsList">Chargement...</div>
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+          <h3>👤 Fiche de profil</h3>
+          <div style="min-width: 200px;">
+            <select id="profileViewerSelect" onchange="loadSelectedProfile(this.value)"></select>
+          </div>
+        </div>
+
+        <div style="margin-top: 10px;">
+          <p><strong>Joueur :</strong> <span id="profUsername" style="color: #38bdf8; font-size: 1.1rem; font-weight: bold;">-</span></p>
+          <p><strong>Rôle :</strong> <span id="profRole">-</span></p>
+        </div>
+
+        <!-- ZONE MEILLEUR TEMPS (PB) -->
+        <div class="pb-box">
+          <div>
+            <span style="color: #94a3b8; font-size: 0.85rem; text-transform: uppercase; font-weight: bold;">⭐ Meilleur temps (PB)</span>
+            <div id="pbDetails" style="font-size: 1.1rem; font-weight: bold; margin-top: 4px;">Aucun temps validé</div>
+          </div>
+          <div id="pbTime" style="font-size: 1.6rem; font-weight: bold; color: #22c55e; font-family: monospace;">--:--.---</div>
+        </div>
+
+        <h4 style="margin-top: 25px;">Runs validées du joueur</h4>
+        <table>
+          <thead>
+            <tr>
+              <th>Tag</th>
+              <th>Jeu</th>
+              <th>Catégorie</th>
+              <th>Temps</th>
+              <th>Preuve</th>
+            </tr>
+          </thead>
+          <tbody id="profileRunsBody">
+            <tr><td colspan="5">Sélectionne un profil.</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
@@ -355,6 +404,18 @@
     return `${clean}@speedrun.com`;
   }
 
+  // Conversion pour calculer le vrai PB (minimum absolu)
+  function timeStringToSeconds(tStr) {
+    if (!tStr) return Infinity;
+    const parts = tStr.trim().replace(',', '.').split(':');
+    if (parts.length === 2) {
+      return (parseFloat(parts[0]) * 60) + parseFloat(parts[1]);
+    } else if (parts.length === 1) {
+      return parseFloat(parts[0]);
+    }
+    return Infinity;
+  }
+
   window.addEventListener('DOMContentLoaded', async () => {
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (session) {
@@ -375,7 +436,13 @@
     });
     if (clickedBtn) clickedBtn.classList.add('active');
 
-    if (tabId === 'tab-profile') loadMyProfileData();
+    if (tabId === 'tab-profile') {
+      const viewer = document.getElementById('profileViewerSelect');
+      if (viewer && !viewer.value && currentUser) {
+        viewer.value = currentUser.id;
+      }
+      loadSelectedProfile(viewer.value || currentUser.id);
+    }
   }
 
   async function login() {
@@ -429,22 +496,30 @@
       document.getElementById('tabBtnAdmin').classList.remove('hidden');
       document.getElementById('adminUserSelector').classList.remove('hidden');
       document.querySelectorAll('.admin-col').forEach(el => el.classList.remove('hidden'));
-      await loadProfilesForAdmin();
       loadPendingRuns();
     }
 
+    await loadAllProfiles();
     await loadGamesAndCategories();
     await loadLeaderboard();
   }
 
-  async function loadProfilesForAdmin() {
+  async function loadAllProfiles() {
     const { data: profiles } = await supabaseClient.from('profiles').select('*').order('username');
     allProfiles = profiles || [];
-    const select = document.getElementById('submitForUser');
-    select.innerHTML = '';
+
+    const selectProfileViewer = document.getElementById('profileViewerSelect');
+    const selectAdminUser = document.getElementById('submitForUser');
+
+    selectProfileViewer.innerHTML = '';
+    if (selectAdminUser) selectAdminUser.innerHTML = '';
+
     allProfiles.forEach(p => {
       const selected = p.id === currentUser.id ? 'selected' : '';
-      select.innerHTML += `<option value="${p.id}" ${selected}>${p.username}</option>`;
+      selectProfileViewer.innerHTML += `<option value="${p.id}" ${selected}>${p.username}</option>`;
+      if (selectAdminUser) {
+        selectAdminUser.innerHTML += `<option value="${p.id}" ${selected}>${p.username}</option>`;
+      }
     });
   }
 
@@ -549,6 +624,7 @@
       .from('runs')
       .select(`
         id,
+        user_id,
         time_seconds,
         proof_url,
         run_tag,
@@ -594,12 +670,13 @@
           `;
         }
 
+        const username = r.profiles?.username || 'Anonyme';
         container.innerHTML += `
           <tr class="${rowClass}">
             <td>${tagBadge}</td>
             <td><strong>${r.categories?.games?.title || '-'}</strong></td>
             <td>${r.categories?.name || '-'}</td>
-            <td>${r.profiles?.username || 'Anonyme'}</td>
+            <td><span class="user-link" onclick="openUserProfile('${r.user_id}')">${username}</span></td>
             <td><strong style="font-family:monospace; font-size:1.1rem;">${r.time_seconds}</strong></td>
             <td>${r.proof_url ? `<a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">Voir vidéo</a>` : '-'}</td>
             ${actionsHtml}
@@ -610,6 +687,83 @@
 
     renderRows(normalRuns, leaderboardBody);
     renderRows(bttRuns, bttBody);
+  }
+
+  function openUserProfile(userId) {
+    const viewer = document.getElementById('profileViewerSelect');
+    if (viewer) viewer.value = userId;
+    switchTab('tab-profile');
+    loadSelectedProfile(userId);
+  }
+
+  async function loadSelectedProfile(userId) {
+    if (!userId) return;
+
+    const userProfile = allProfiles.find(p => p.id === userId) || { username: 'Inconnu', role: 'player' };
+    document.getElementById('profUsername').innerText = userProfile.username;
+    document.getElementById('profRole').innerText = userProfile.role.toUpperCase();
+
+    const { data: runs } = await supabaseClient
+      .from('runs')
+      .select(`
+        id,
+        time_seconds,
+        proof_url,
+        run_tag,
+        categories ( name, games ( title ) )
+      `)
+      .eq('user_id', userId)
+      .eq('status', 'verified');
+
+    const tbody = document.getElementById('profileRunsBody');
+    tbody.innerHTML = '';
+
+    const pbDetails = document.getElementById('pbDetails');
+    const pbTime = document.getElementById('pbTime');
+
+    if (!runs || runs.length === 0) {
+      pbDetails.innerText = "Aucun temps validé";
+      pbTime.innerText = "--:--.---";
+      tbody.innerHTML = '<tr><td colspan="5">Aucun chrono enregistré pour ce joueur.</td></tr>';
+      return;
+    }
+
+    // Calcul du PB (meilleur temps absolu)
+    let bestRun = runs[0];
+    let minSeconds = timeStringToSeconds(runs[0].time_seconds);
+
+    runs.forEach(r => {
+      const s = timeStringToSeconds(r.time_seconds);
+      if (s < minSeconds) {
+        minSeconds = s;
+        bestRun = r;
+      }
+    });
+
+    pbDetails.innerText = `${bestRun.categories?.games?.title || '-'} — ${bestRun.categories?.name || '-'}`;
+    pbTime.innerText = bestRun.time_seconds;
+
+    runs.forEach(r => {
+      let tagBadge = '-';
+      let rowClass = '';
+      if (r.run_tag === 'WR') {
+        tagBadge = '<span class="badge-wr">🔴 WR</span>';
+        rowClass = 'row-wr';
+      } else if (r.run_tag === 'BTT') {
+        tagBadge = '<span class="badge-btt">🟡 BTT</span>';
+        rowClass = 'row-btt';
+      }
+
+      tbody.innerHTML += `
+        <tr class="${rowClass}">
+          <td>${tagBadge}</td>
+          <td><strong>${r.categories?.games?.title || '-'}</strong></td>
+          <td>${r.categories?.name || '-'}</td>
+          <td><strong style="font-family:monospace; font-size:1.05rem;">${r.time_seconds}</strong></td>
+          <td>${r.proof_url ? `<a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">Voir vidéo</a>` : '-'}</td>
+        </tr>
+      `;
+    });
   }
 
   async function loadPendingRuns() {
@@ -666,43 +820,14 @@
     });
   }
 
-  async function loadMyProfileData() {
-    document.getElementById('profUsername').innerText = currentProfile.username;
-    document.getElementById('profRole').innerText = currentProfile.role.toUpperCase();
-    document.getElementById('profId').innerText = currentUser.id;
-
-    const { data: myRuns } = await supabaseClient
-      .from('runs')
-      .select(`
-        id,
-        time_seconds,
-        status,
-        run_tag,
-        categories ( name, games ( title ) )
-      `)
-      .eq('user_id', currentUser.id);
-
-    const container = document.getElementById('myRunsList');
-    if (!myRuns || myRuns.length === 0) {
-      container.innerHTML = '<p style="color:#94a3b8;">Aucune run soumise pour le moment.</p>';
-      return;
-    }
-
-    container.innerHTML = myRuns.map(r => `
-      <div style="background:#0f172a; padding:10px; border-radius:6px; margin-bottom:8px;">
-        <strong>${r.categories?.games?.title} (${r.categories?.name})</strong> : ${r.time_seconds} 
-        — Statut : <span style="color:${r.status === 'verified' ? '#22c55e' : '#eab308'}; font-weight:bold;">${r.status}</span>
-        ${r.run_tag ? `[${r.run_tag}]` : ''}
-      </div>
-    `).join('');
-  }
-
   async function editRunTime(runId, currentVal) {
     const newTime = prompt("Corriger le temps :", currentVal);
     if (newTime !== null && newTime.trim() !== '') {
       await supabaseClient.from('runs').update({ time_seconds: newTime.trim() }).eq('id', runId);
       loadPendingRuns();
       loadLeaderboard();
+      const viewer = document.getElementById('profileViewerSelect');
+      if (viewer && viewer.value) loadSelectedProfile(viewer.value);
     }
   }
 
@@ -710,6 +835,8 @@
     if (confirm("Supprimer définitivement ce chrono ?")) {
       await supabaseClient.from('runs').delete().eq('id', runId);
       loadLeaderboard();
+      const viewer = document.getElementById('profileViewerSelect');
+      if (viewer && viewer.value) loadSelectedProfile(viewer.value);
     }
   }
 
