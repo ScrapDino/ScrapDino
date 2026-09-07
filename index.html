@@ -52,13 +52,11 @@
     .btn-success { background: #22c55e; }
     .btn-success:hover { background: #16a34a; }
     .secondary-btn { background: #475569; }
-    .secondary-btn:hover { background: #334155; }
-    .btn-sm { padding: 5px 10px; font-size: 0.85rem; }
     .header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 15px;
+      margin-bottom: 10px;
     }
     .badge {
       display: inline-block;
@@ -69,6 +67,35 @@
       background: #3b82f6;
     }
     .badge-admin { background: #eab308; color: black; }
+    
+    /* BADGES WR ET BTT */
+    .badge-wr {
+      background: #ef4444;
+      color: white;
+      font-weight: bold;
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+    .badge-btt {
+      background: #eab308;
+      color: black;
+      font-weight: bold;
+      padding: 3px 8px;
+      border-radius: 4px;
+      display: inline-block;
+    }
+
+    /* COULEURS DES LIGNES */
+    .row-wr {
+      background: rgba(239, 68, 68, 0.18) !important;
+      border-left: 4px solid #ef4444;
+    }
+    .row-btt {
+      background: rgba(234, 179, 8, 0.18) !important;
+      border-left: 4px solid #eab308;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -86,17 +113,22 @@
       gap: 15px;
     }
     .hidden { display: none; }
-    .pending-item {
-      background: #0f172a;
-      border: 1px solid #334155;
-      padding: 12px;
-      border-radius: 8px;
-      margin-bottom: 10px;
+    .radio-group {
       display: flex;
-      justify-content: space-between;
+      gap: 20px;
       align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
+      margin: 10px 0;
+    }
+    .radio-group label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    .radio-group input[type="radio"] {
+      width: auto;
+      margin: 0;
     }
   </style>
 </head>
@@ -104,64 +136,56 @@
 
 <div class="container">
 
-  <!-- VUE AUTHENTIFICATION (CONNEXION & INSCRIPTION) -->
-  <div class="card" id="authSection" style="max-width: 400px; margin: 60px auto; text-align: center;">
-    <h1>⏱️ Speedrun Tracker</h1>
+  <!-- VUE CONNEXION -->
+  <div class="card" id="authSection" style="max-width: 400px; margin: 60px auto;">
+    <h1 style="text-align: center;">⏱️ Speedrun Tracker</h1>
     <input type="text" id="username" placeholder="Pseudo du joueur" autocomplete="username" />
     <input type="password" id="password" placeholder="Mot de passe (6 car. min)" autocomplete="current-password" />
-    
     <button style="width: 100%; margin-top: 10px;" onclick="login()">Se connecter</button>
-    <button class="secondary-btn" style="width: 100%; margin-top: 8px;" onclick="signUp()">Créer un compte</button>
-    
-    <div id="authMsg" style="margin-top: 12px; font-size: 0.9rem;"></div>
+    <div id="authMsg" style="margin-top: 10px; font-size: 0.9rem; text-align: center;"></div>
   </div>
 
   <!-- VUE PRINCIPALE -->
   <div id="appSection" class="hidden">
     <div class="header">
       <div>
-        <h2 style="display: inline-block; margin: 0;" id="userGreeting">Bienvenue</h2>
+        <h2 style="display: inline-block; margin: 0;" id="userGreeting">Bonjour</h2>
         <span id="userRoleBadge" class="badge"></span>
       </div>
       <button class="secondary-btn" onclick="logout()">Déconnexion</button>
     </div>
 
-    <!-- PANNEAU ADMINISTRATEUR -->
+    <!-- PANNEAU ADMIN -->
     <div class="card hidden" id="adminPanel" style="border: 1px solid #eab308;">
       <h3 style="color: #eab308;">👑 Panneau Administrateur</h3>
-
-      <!-- GESTION DES JEUX ET CATÉGORIES -->
       <div class="grid-2">
         <div>
           <h4>Ajouter un jeu</h4>
-          <input type="text" id="newGameTitle" placeholder="Ex: Super Mario 64" />
+          <input type="text" id="newGameTitle" placeholder="Ex: Shutter" />
           <button onclick="addGame()">Créer le jeu</button>
         </div>
         <div>
           <h4>Ajouter une catégorie</h4>
           <select id="gameSelectForCategory"></select>
-          <input type="text" id="newCategoryName" placeholder="Ex: Any%, 100%" />
+          <input type="text" id="newCategoryName" placeholder="Ex: NMG, Any%" />
           <button onclick="addCategory()">Créer la catégorie</button>
         </div>
       </div>
 
-      <hr style="border: none; border-top: 1px solid #334155; margin: 20px 0;" />
-
-      <!-- LISTE D'ATTENTE DES RUNS -->
-      <h4>⏳ Runs en attente de vérification</h4>
-      <div id="pendingRunsList">Chargement des runs en attente...</div>
+      <h4 style="margin-top: 20px;">⏳ Runs en attente de vérification</h4>
+      <div id="pendingRunsList">Aucune run en attente.</div>
     </div>
 
-    <!-- SOUMETTRE UN TEMPS (JOUEURS & ADMIN) -->
+    <!-- SOUMETTRE UN CHRONO -->
     <div class="card">
       <h3>🚀 Soumettre un chrono</h3>
 
-      <!-- SÉLECTION JOUEUR (VISIBLE UNIQUEMENT POUR L'ADMIN) -->
-      <div id="adminPlayerSelectContainer" class="hidden" style="margin-bottom: 12px; background: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid #eab308;">
-        <label style="color: #eab308; font-weight: bold;">👑 Soumettre pour le joueur :</label>
-        <select id="targetPlayerSelect"></select>
-        <label style="display: flex; align-items: center; gap: 8px; margin-top: 8px; cursor: pointer; font-size: 0.9rem;">
-          <input type="checkbox" id="adminAutoApprove" checked style="width: auto; margin: 0;" />
+      <!-- CHAMP ADMIN : CHOIX DU JOUEUR -->
+      <div id="adminUserSelector" class="hidden" style="background:#0f172a; padding: 10px; border-radius: 8px; margin-bottom: 12px; border: 1px dashed #eab308;">
+        <label style="color:#eab308; font-weight:bold;">👑 Soumettre pour le joueur :</label>
+        <select id="submitForUser"></select>
+        <label style="display:flex; align-items:center; gap:8px; margin-top:8px; cursor:pointer;">
+          <input type="checkbox" id="autoValidateCheck" style="width:auto; margin:0;" />
           Valider immédiatement dans le classement (ne pas mettre en attente)
         </label>
       </div>
@@ -176,56 +200,51 @@
           <select id="runCategorySelect"></select>
         </div>
       </div>
+
       <div class="grid-2" style="margin-top: 10px;">
         <div>
-          <label>Temps (format <code>MM:SS.ms</code> ex: <code>01:24.500</code>) :</label>
-          <input type="text" id="runTimeString" placeholder="00:00.000" />
+          <label>Temps (format <code>MM:SS.ms</code> ou <code>SS.ms</code>) :</label>
+          <input type="text" id="runTime" placeholder="Ex: 04:48.500 ou 12.350" />
         </div>
         <div>
-          <label>Lien de la preuve (YouTube) :</label>
+          <label>Lien de la preuve (YouTube, Twitch) :</label>
           <input type="url" id="runProof" placeholder="https://youtube.com/..." />
         </div>
       </div>
+
+      <!-- OPTION WR OU BTT SEGMENT -->
+      <div style="margin-top: 10px;">
+        <label style="font-weight: bold;">Mention spéciale :</label>
+        <div class="radio-group">
+          <label><input type="radio" name="runTag" value="" checked /> Normal</label>
+          <label style="color: #ef4444; font-weight:bold;"><input type="radio" name="runTag" value="WR" /> 🔴 WR (World Record)</label>
+          <label style="color: #eab308; font-weight:bold;"><input type="radio" name="runTag" value="BTT" /> 🟡 BTT Segment</label>
+        </div>
+      </div>
+
       <button style="margin-top: 12px;" onclick="submitRun()">Envoyer le chrono</button>
       <div id="runMsg" style="margin-top: 8px; font-size: 0.9rem;"></div>
     </div>
 
-    <!-- CLASSEMENT OFFICIEL AVEC FILTRES -->
+    <!-- CLASSEMENT OFFICIEL -->
     <div class="card">
       <h3>🏆 Classement officiel</h3>
-      <div class="grid-2">
-        <div>
-          <label>Filtrer par Jeu :</label>
-          <select id="filterGameSelect" onchange="onFilterGameChange()">
-            <option value="all">Tous les jeux</option>
-          </select>
-        </div>
-        <div>
-          <label>Filtrer par Catégorie :</label>
-          <select id="filterCategorySelect" onchange="renderLeaderboard()">
-            <option value="all">Toutes les catégories</option>
-          </select>
-        </div>
-      </div>
-
       <table>
         <thead>
           <tr>
-            <th>Rang</th>
+            <th>Tag</th>
             <th>Jeu</th>
             <th>Catégorie</th>
             <th>Joueur</th>
             <th>Temps</th>
             <th>Preuve</th>
-            <th id="adminActionTh" class="hidden">Actions Admin</th>
           </tr>
         </thead>
         <tbody id="leaderboardBody">
-          <tr><td colspan="7">Chargement des scores...</td></tr>
+          <tr><td colspan="6">Chargement des scores...</td></tr>
         </tbody>
       </table>
     </div>
-
   </div>
 
 </div>
@@ -233,71 +252,48 @@
 <script>
   const SUPABASE_URL = "https://xvienxfcxunlyvejmnzv.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_VBWF6RKzyWLt0L1ANK9dAA_zZofxYi0";
-  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true
-    }
-  });
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   let currentUser = null;
   let currentProfile = null;
   let allGames = [];
   let allCategories = [];
   let allProfiles = [];
-  let verifiedRuns = [];
-
-  // Vérifier la session existante au chargement
-  window.addEventListener('DOMContentLoaded', async () => {
-    const { data: { session } } = await supabaseClient.auth.getSession();
-    if (session && session.user) {
-      currentUser = session.user;
-      await initApp();
-    }
-  });
-
-  function parseTimeToSeconds(timeStr) {
-    if (!timeStr) return null;
-    const parts = timeStr.trim().split(':');
-    if (parts.length === 2) {
-      const min = parseFloat(parts[0]);
-      const sec = parseFloat(parts[1]);
-      if (isNaN(min) || isNaN(sec)) return null;
-      return (min * 60) + sec;
-    } else if (parts.length === 3) {
-      const h = parseFloat(parts[0]);
-      const min = parseFloat(parts[1]);
-      const sec = parseFloat(parts[2]);
-      if (isNaN(h) || isNaN(min) || isNaN(sec)) return null;
-      return (h * 3600) + (min * 60) + sec;
-    } else {
-      const sec = parseFloat(timeStr);
-      return isNaN(sec) ? null : sec;
-    }
-  }
-
-  function formatSecondsToTime(totalSec) {
-    if (totalSec == null || isNaN(totalSec)) return '-';
-    const hours = Math.floor(totalSec / 3600);
-    const minutes = Math.floor((totalSec % 3600) / 60);
-    const seconds = totalSec % 60;
-
-    const minStr = String(minutes).padStart(2, '0');
-    const secStr = seconds.toFixed(3).padStart(6, '0');
-
-    if (hours > 0) {
-      const hStr = String(hours).padStart(2, '0');
-      return `${hStr}:${minStr}:${secStr}`;
-    }
-    return `${minStr}:${secStr}`;
-  }
 
   function pseudoToEmail(pseudo) {
     const clean = pseudo.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
     return `${clean}@speedrun.com`;
   }
 
-  // Connexion
+  // Conversion MM:SS.ms ou SS.ms en secondes à virgule flottante
+  function parseTimeToSeconds(inputStr) {
+    if (!inputStr) return null;
+    const parts = inputStr.trim().split(':');
+    let total = 0;
+    if (parts.length === 2) {
+      const minutes = parseFloat(parts[0]);
+      const seconds = parseFloat(parts[1]);
+      if (isNaN(minutes) || isNaN(seconds)) return null;
+      total = (minutes * 60) + seconds;
+    } else if (parts.length === 1) {
+      total = parseFloat(parts[0]);
+      if (isNaN(total)) return null;
+    } else {
+      return null;
+    }
+    return Math.round(total * 1000) / 1000;
+  }
+
+  // Formatage propre avec 3 décimales
+  function formatSecondsToTime(totalSeconds) {
+    if (totalSeconds === null || totalSeconds === undefined) return '-';
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = (totalSeconds % 60).toFixed(3);
+    const minsStr = mins < 10 ? '0' + mins : mins;
+    const secsStr = parseFloat(secs) < 10 ? '0' + secs : secs;
+    return `${minsStr}:${secsStr}`;
+  }
+
   async function login() {
     const pseudo = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
@@ -305,7 +301,7 @@
 
     if (!pseudo || !password) {
       msg.style.color = '#ef4444';
-      msg.innerText = "Remplis ton pseudo et ton mot de passe.";
+      msg.innerText = "Champs requis.";
       return;
     }
 
@@ -320,55 +316,6 @@
     } else {
       currentUser = data.user;
       await initApp();
-    }
-  }
-
-  // Inscription
-  async function signUp() {
-    const pseudo = document.getElementById('username').value.trim();
-    const password = document.getElementById('password').value;
-    const msg = document.getElementById('authMsg');
-
-    if (!pseudo || !password) {
-      msg.style.color = '#ef4444';
-      msg.innerText = "Remplis le pseudo et le mot de passe.";
-      return;
-    }
-
-    if (password.length < 6) {
-      msg.style.color = '#ef4444';
-      msg.innerText = "Le mot de passe doit comporter au moins 6 caractères.";
-      return;
-    }
-
-    const email = pseudoToEmail(pseudo);
-
-    const { data, error } = await supabaseClient.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { username: pseudo }
-      }
-    });
-
-    if (error) {
-      msg.style.color = '#ef4444';
-      msg.innerText = error.message;
-    } else {
-      // Auto-connexion directe après création
-      currentUser = data.user;
-      const { data: signInData, error: signInErr } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-      });
-
-      if (!signInErr && signInData?.user) {
-        currentUser = signInData.user;
-        await initApp();
-      } else {
-        msg.style.color = '#22c55e';
-        msg.innerText = `Compte créé pour ${pseudo} ! Tu peux cliquer sur Se connecter.`;
-      }
     }
   }
 
@@ -396,24 +343,23 @@
     if (currentProfile.role === 'admin') {
       badge.classList.add('badge-admin');
       document.getElementById('adminPanel').classList.remove('hidden');
-      document.getElementById('adminActionTh').classList.remove('hidden');
-      document.getElementById('adminPlayerSelectContainer').classList.remove('hidden');
-      await loadProfilesList();
-      await loadPendingRuns();
+      document.getElementById('adminUserSelector').classList.remove('hidden');
+      await loadProfilesForAdmin();
+      loadPendingRuns();
     }
 
     await loadGamesAndCategories();
-    await fetchLeaderboard();
+    await loadLeaderboard();
   }
 
-  async function loadProfilesList() {
-    const { data } = await supabaseClient.from('profiles').select('id, username').order('username');
-    allProfiles = data || [];
-    const select = document.getElementById('targetPlayerSelect');
+  async function loadProfilesForAdmin() {
+    const { data: profiles } = await supabaseClient.from('profiles').select('*').order('username');
+    allProfiles = profiles || [];
+    const select = document.getElementById('submitForUser');
     select.innerHTML = '';
     allProfiles.forEach(p => {
-      const isCurrent = p.id === currentUser.id ? 'selected' : '';
-      select.innerHTML += `<option value="${p.id}" ${isCurrent}>${p.username} ${p.id === currentUser.id ? '(Moi)' : ''}</option>`;
+      const selected = p.id === currentUser.id ? 'selected' : '';
+      select.innerHTML += `<option value="${p.id}" ${selected}>${p.username}</option>`;
     });
   }
 
@@ -426,44 +372,27 @@
 
     const gameSelectAdmin = document.getElementById('gameSelectForCategory');
     const gameSelectRun = document.getElementById('runGameSelect');
-    const filterGameSelect = document.getElementById('filterGameSelect');
 
     gameSelectAdmin.innerHTML = '';
     gameSelectRun.innerHTML = '<option value="">Sélectionner un jeu</option>';
-    filterGameSelect.innerHTML = '<option value="all">Tous les jeux</option>';
 
     allGames.forEach(g => {
       gameSelectAdmin.innerHTML += `<option value="${g.id}">${g.title}</option>`;
       gameSelectRun.innerHTML += `<option value="${g.id}">${g.title}</option>`;
-      filterGameSelect.innerHTML += `<option value="${g.id}">${g.title}</option>`;
     });
 
     loadCategoriesForRun();
-    onFilterGameChange();
   }
 
   function loadCategoriesForRun() {
     const gameId = document.getElementById('runGameSelect').value;
     const catSelect = document.getElementById('runCategorySelect');
     catSelect.innerHTML = '';
+
     const filtered = allCategories.filter(c => c.game_id == gameId);
     filtered.forEach(c => {
       catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
     });
-  }
-
-  function onFilterGameChange() {
-    const gameId = document.getElementById('filterGameSelect').value;
-    const catSelect = document.getElementById('filterCategorySelect');
-    catSelect.innerHTML = '<option value="all">Toutes les catégories</option>';
-
-    if (gameId !== 'all') {
-      const filtered = allCategories.filter(c => c.game_id == gameId);
-      filtered.forEach(c => {
-        catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-      });
-    }
-    renderLeaderboard();
   }
 
   async function addGame() {
@@ -485,26 +414,28 @@
 
   async function submitRun() {
     const category_id = document.getElementById('runCategorySelect').value;
-    const timeInput = document.getElementById('runTimeString').value;
+    const rawTime = document.getElementById('runTime').value;
+    const time_seconds = parseTimeToSeconds(rawTime);
     const proof_url = document.getElementById('runProof').value.trim();
     const msg = document.getElementById('runMsg');
 
-    const time_seconds = parseTimeToSeconds(timeInput);
+    const selectedTag = document.querySelector('input[name="runTag"]:checked')?.value || null;
 
-    if (!category_id || time_seconds === null || time_seconds <= 0) {
+    if (!category_id || time_seconds === null) {
       msg.style.color = '#ef4444';
-      msg.innerText = "Format invalide. Utilise MM:SS.ms (ex: 01:23.450)";
+      msg.innerText = "Saisis une catégorie et un chrono valide (ex: 04:48.500).";
       return;
     }
 
     let targetUserId = currentUser.id;
-    let status = 'pending';
+    let targetStatus = 'pending';
 
-    if (currentProfile && currentProfile.role === 'admin') {
-      const selectedId = document.getElementById('targetPlayerSelect').value;
-      if (selectedId) targetUserId = selectedId;
-      const autoApprove = document.getElementById('adminAutoApprove').checked;
-      status = autoApprove ? 'verified' : 'pending';
+    if (currentProfile.role === 'admin') {
+      const adminChosenUser = document.getElementById('submitForUser').value;
+      if (adminChosenUser) targetUserId = adminChosenUser;
+      if (document.getElementById('autoValidateCheck').checked) {
+        targetStatus = 'verified';
+      }
     }
 
     const { error } = await supabaseClient.from('runs').insert([{
@@ -512,7 +443,8 @@
       category_id,
       time_seconds,
       proof_url,
-      status
+      status: targetStatus,
+      run_tag: selectedTag
     }]);
 
     if (error) {
@@ -520,104 +452,56 @@
       msg.innerText = error.message;
     } else {
       msg.style.color = '#22c55e';
-      msg.innerText = status === 'verified' 
-        ? "Chrono ajouté et validé directement dans le classement !" 
-        : "Chrono envoyé ! En attente de validation.";
-      document.getElementById('runTimeString').value = '';
+      msg.innerText = targetStatus === 'verified' ? "Chrono validé et publié immédiatement !" : "Chrono envoyé ! En attente de vérification.";
+      document.getElementById('runTime').value = '';
       document.getElementById('runProof').value = '';
-      if (currentProfile.role === 'admin') {
-        loadPendingRuns();
-        fetchLeaderboard();
-      }
+      document.querySelector('input[name="runTag"][value=""]').checked = true;
+      if (currentProfile.role === 'admin') loadPendingRuns();
+      loadLeaderboard();
     }
   }
 
-  async function editRun(runId, currentSeconds) {
-    const currentFormatted = formatSecondsToTime(currentSeconds);
-    const newTime = prompt("Modifier le chrono (format MM:SS.ms) :", currentFormatted);
-    if (!newTime) return;
-
-    const parsed = parseTimeToSeconds(newTime);
-    if (parsed === null || parsed <= 0) {
-      alert("Format invalide.");
-      return;
-    }
-
-    const { error } = await supabaseClient
-      .from('runs')
-      .update({ time_seconds: parsed })
-      .eq('id', runId);
-
-    if (error) {
-      alert("Erreur lors de la modification : " + error.message);
-    } else {
-      await fetchLeaderboard();
-    }
-  }
-
-  async function deleteRun(runId) {
-    if (!confirm("Voulez-vous vraiment supprimer ce temps ?")) return;
-    const { error } = await supabaseClient.from('runs').delete().eq('id', runId);
-    if (!error) await fetchLeaderboard();
-  }
-
-  async function fetchLeaderboard() {
+  async function loadLeaderboard() {
     const { data: runs } = await supabaseClient
       .from('runs')
       .select(`
         id,
         time_seconds,
         proof_url,
-        category_id,
-        categories ( id, name, game_id, games ( id, title ) ),
+        run_tag,
+        categories ( name, games ( title ) ),
         profiles ( username )
       `)
       .eq('status', 'verified')
       .order('time_seconds', { ascending: true });
 
-    verifiedRuns = runs || [];
-    renderLeaderboard();
-  }
-
-  function renderLeaderboard() {
-    const gameFilter = document.getElementById('filterGameSelect').value;
-    const catFilter = document.getElementById('filterCategorySelect').value;
     const tbody = document.getElementById('leaderboardBody');
-    const isAdmin = currentProfile?.role === 'admin';
-
-    let filtered = verifiedRuns.filter(r => {
-      const matchesGame = (gameFilter === 'all') || (r.categories?.games?.id == gameFilter);
-      const matchesCat = (catFilter === 'all') || (r.categories?.id == catFilter);
-      return matchesGame && matchesCat;
-    });
-
     tbody.innerHTML = '';
 
-    if (filtered.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="${isAdmin ? 7 : 6}">Aucun score pour cette sélection.</td></tr>`;
+    if (!runs || runs.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6">Aucun chrono validé pour le moment.</td></tr>';
       return;
     }
 
-    filtered.forEach((r, index) => {
-      let rankIcon = `#${index + 1}`;
-      if (index === 0) rankIcon = '🥇 1er';
-      if (index === 1) rankIcon = '🥈 2e';
-      if (index === 2) rankIcon = '🥉 3e';
+    runs.forEach(r => {
+      let tagBadge = '-';
+      let rowClass = '';
+      if (r.run_tag === 'WR') {
+        tagBadge = '<span class="badge-wr">🔴 WR</span>';
+        rowClass = 'row-wr';
+      } else if (r.run_tag === 'BTT') {
+        tagBadge = '<span class="badge-btt">🟡 BTT</span>';
+        rowClass = 'row-btt';
+      }
 
       tbody.innerHTML += `
-        <tr>
-          <td><strong>${rankIcon}</strong></td>
-          <td>${r.categories?.games?.title || '-'}</td>
+        <tr class="${rowClass}">
+          <td>${tagBadge}</td>
+          <td><strong>${r.categories?.games?.title || '-'}</strong></td>
           <td>${r.categories?.name || '-'}</td>
-          <td><strong>${r.profiles?.username || 'Anonyme'}</strong></td>
-          <td style="font-family: monospace; font-size: 1.05rem; color: #38bdf8;">${formatSecondsToTime(r.time_seconds)}</td>
-          <td>${r.proof_url ? `<a href="${r.proof_url}" target="_blank" style="color:#60a5fa; text-decoration: underline;">Voir la vidéo</a>` : '-'}</td>
-          ${isAdmin ? `
-            <td>
-              <button class="btn-sm secondary-btn" onclick="editRun(${r.id}, ${r.time_seconds})">✏️ Éditer</button>
-              <button class="btn-sm btn-danger" onclick="deleteRun(${r.id})">🗑️</button>
-            </td>
-          ` : ''}
+          <td>${r.profiles?.username || 'Anonyme'}</td>
+          <td><strong style="font-family:monospace; font-size:1.05rem;">${formatSecondsToTime(r.time_seconds)}</strong></td>
+          <td>${r.proof_url ? `<a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">Voir vidéo</a>` : '-'}</td>
         </tr>
       `;
     });
@@ -630,41 +514,40 @@
         id,
         time_seconds,
         proof_url,
+        run_tag,
         categories ( name, games ( title ) ),
         profiles ( username )
       `)
-      .eq('status', 'pending')
-      .order('created_at', { ascending: true });
+      .eq('status', 'pending');
 
     const container = document.getElementById('pendingRunsList');
     container.innerHTML = '';
 
     if (!runs || runs.length === 0) {
-      container.innerHTML = '<p style="color:#94a3b8;">Aucune run en attente de vérification.</p>';
+      container.innerHTML = '<p style="color:#94a3b8;">Aucune run en attente.</p>';
       return;
     }
 
     runs.forEach(r => {
-      const pseudo = r.profiles?.username || 'Inconnu';
-      const chrono = formatSecondsToTime(r.time_seconds);
-      const gameInfo = `${r.categories?.games?.title || '-'} (${r.categories?.name || '-'})`;
-      const proofLink = r.proof_url 
-        ? `<a href="${r.proof_url}" target="_blank" style="color:#38bdf8; font-weight:bold; text-decoration:underline;">📺 Voir la vidéo YouTube</a>`
-        : '<span style="color:#64748b;">(Aucun lien vidéo fourni)</span>';
+      let borderStyle = '#334155';
+      let tagBadge = '';
+      if (r.run_tag === 'WR') {
+        borderStyle = '#ef4444';
+        tagBadge = '<span class="badge-wr">🔴 WR</span>';
+      } else if (r.run_tag === 'BTT') {
+        borderStyle = '#eab308';
+        tagBadge = '<span class="badge-btt">🟡 BTT Segment</span>';
+      }
 
       container.innerHTML += `
-        <div class="pending-item">
+        <div style="background:#0f172a; border-left: 5px solid ${borderStyle}; padding:12px; border-radius:6px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
           <div>
-            <span style="font-size: 1.05rem;">Joueur : <strong style="color:#f59e0b;">${pseudo}</strong></span>
-            &nbsp;|&nbsp;
-            <span>Temps : <strong style="color:#38bdf8; font-family:monospace; font-size:1.1rem;">${chrono}</strong></span>
-            &nbsp;|&nbsp;
-            <span>Jeu : <em>${gameInfo}</em></span>
-            <div style="margin-top: 5px;">
-              ${proofLink}
-            </div>
+            ${tagBadge ? tagBadge + ' ' : ''}
+            <strong>${r.profiles?.username}</strong> — ${r.categories?.games?.title} (${r.categories?.name}) : 
+            <strong style="color:#38bdf8; font-family:monospace;">${formatSecondsToTime(r.time_seconds)}</strong>
+            ${r.proof_url ? ` | <a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">📺 Voir la vidéo</a>` : ''}
           </div>
-          <div>
+          <div style="display:flex; gap:8px;">
             <button class="btn-success" onclick="updateRunStatus(${r.id}, 'verified')">✅ Valider</button>
             <button class="btn-danger" onclick="updateRunStatus(${r.id}, 'rejected')">❌ Rejeter</button>
           </div>
@@ -676,7 +559,7 @@
   async function updateRunStatus(runId, status) {
     await supabaseClient.from('runs').update({ status }).eq('id', runId);
     loadPendingRuns();
-    await fetchLeaderboard();
+    loadLeaderboard();
   }
 </script>
 </body>
