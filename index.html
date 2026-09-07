@@ -255,7 +255,12 @@
 <script>
   const SUPABASE_URL = "https://xvienxfcxunlyvejmnzv.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_VBWF6RKzyWLt0L1ANK9dAA_zZofxYi0";
-  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true
+    }
+  });
 
   let currentUser = null;
   let currentProfile = null;
@@ -263,6 +268,15 @@
   let allCategories = [];
   let allProfiles = [];
   let verifiedRuns = [];
+
+  // Vérification de session au chargement de la page
+  window.addEventListener('DOMContentLoaded', async () => {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session && session.user) {
+      currentUser = session.user;
+      await initApp();
+    }
+  });
 
   // Parse "01:24.500" -> 84.5
   function parseTimeToSeconds(timeStr) {
@@ -511,7 +525,7 @@
       category_id,
       time_seconds,
       proof_url,
-      status: 'verified' // Directement vérifié par l'admin
+      status: 'verified'
     }]);
 
     if (error) {
