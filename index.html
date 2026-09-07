@@ -336,6 +336,7 @@
           <div>
             <label>Palier :</label>
             <select id="runStageSelect">
+              <option value="">Aucun</option>
               <option value="Tuto">Tuto</option>
               <option value="Door skip">Door skip</option>
               <option value="étage 1">étage 1</option>
@@ -657,7 +658,8 @@
 
   async function submitRun() {
     const category_id = document.getElementById('runCategorySelect').value;
-    const stage = document.getElementById('runStageSelect').value;
+    const stageVal = document.getElementById('runStageSelect').value.trim();
+    const stage = stageVal === "" ? null : stageVal;
     const rawTime = document.getElementById('runTime').value.trim();
     const proof_url = document.getElementById('runProof').value.trim();
     const msg = document.getElementById('runMsg');
@@ -698,6 +700,7 @@
       msg.innerText = targetStatus === 'verified' ? "Chrono validé et publié !" : "Chrono envoyé ! En attente de validation.";
       document.getElementById('runTime').value = '';
       document.getElementById('runProof').value = '';
+      document.getElementById('runStageSelect').value = '';
       document.querySelector('input[name="runTag"][value=""]').checked = true;
       if (currentProfile.role === 'admin') loadPendingRuns();
       loadLeaderboard();
@@ -757,12 +760,11 @@
         }
 
         const username = r.profiles?.username || 'Anonyme';
-        const displayStage = r.stage || 'Général';
+        const stageBadge = r.stage ? `<span class="badge-stage">${r.stage}</span>` : '-';
 
-        // ORDRE : PALIER | TEMPS | JOUEUR | LIENS
         container.innerHTML += `
           <tr class="${rowClass}">
-            <td>${tagBadge}<span class="badge-stage">${displayStage}</span></td>
+            <td>${tagBadge}${stageBadge}</td>
             <td><strong style="font-family:monospace; font-size:1.1rem;">${r.time_seconds}</strong></td>
             <td><span class="user-link" onclick="openUserProfile('${r.user_id}')">${username}</span></td>
             <td>${r.proof_url ? `<a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">Voir vidéo</a>` : '-'}</td>
@@ -841,9 +843,11 @@
         rowClass = 'row-btt';
       }
 
+      const stageBadge = r.stage ? `<span class="badge-stage">${r.stage}</span>` : '-';
+
       tbody.innerHTML += `
         <tr class="${rowClass}">
-          <td>${tagBadge}<span class="badge-stage">${r.stage || 'Général'}</span></td>
+          <td>${tagBadge}${stageBadge}</td>
           <td><strong style="font-family:monospace; font-size:1.05rem;">${r.time_seconds}</strong></td>
           <td>${r.proof_url ? `<a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">Voir vidéo</a>` : '-'}</td>
         </tr>
@@ -898,15 +902,17 @@
         blockClass = 'row-wr';
       } else if (r.run_tag === 'BTT') {
         borderStyle = '#eab308';
-        tagBadge = '<span class="badge-btt">🟡 BTT</span>';
+        tagBadge = '<span class="badge-btt">🟡 BTT Segment</span>';
         blockClass = 'row-btt';
       }
+
+      const stageBadge = r.stage ? `<span class="badge-stage">${r.stage}</span>` : '';
 
       container.innerHTML += `
         <div class="${blockClass}" style="background:#0f172a; border-left: 5px solid ${borderStyle}; padding:12px; border-radius:6px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
           <div>
             ${tagBadge ? tagBadge + ' ' : ''}
-            <span class="badge-stage">${r.stage || 'Général'}</span>
+            ${stageBadge ? stageBadge + ' ' : ''}
             <strong>${r.profiles?.username}</strong> : 
             <strong style="color:#38bdf8; font-family:monospace; font-size:1.1rem;">${r.time_seconds}</strong>
             ${r.proof_url ? ` | <a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">📺 Lien</a>` : ''}
