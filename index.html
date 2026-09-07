@@ -85,11 +85,6 @@
       grid-template-columns: 1fr 1fr;
       gap: 15px;
     }
-    .grid-3 {
-      display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 12px;
-    }
     .hidden { display: none; }
     .pending-item {
       background: #0f172a;
@@ -132,7 +127,7 @@
     <div class="card hidden" id="adminPanel" style="border: 1px solid #eab308;">
       <h3 style="color: #eab308;">👑 Panneau Administrateur</h3>
 
-      <!-- 1. GESTION DES JEUX ET CATÉGORIES -->
+      <!-- GESTION DES JEUX ET CATÉGORIES -->
       <div class="grid-2">
         <div>
           <h4>Ajouter un jeu</h4>
@@ -149,45 +144,25 @@
 
       <hr style="border: none; border-top: 1px solid #334155; margin: 20px 0;" />
 
-      <!-- 2. AJOUTER / MODIFIER MANUELLEMENT LE TEMPS D'UN JOUEUR -->
-      <h4>Ajouter un temps pour un joueur</h4>
-      <div class="grid-3">
-        <div>
-          <label>Joueur :</label>
-          <select id="adminUserSelect"></select>
-        </div>
-        <div>
-          <label>Jeu :</label>
-          <select id="adminGameSelect" onchange="loadAdminCategories()"></select>
-        </div>
-        <div>
-          <label>Catégorie :</label>
-          <select id="adminCategorySelect"></select>
-        </div>
-      </div>
-      <div class="grid-2" style="margin-top: 8px;">
-        <div>
-          <label>Temps (<code>MM:SS.ms</code>) :</label>
-          <input type="text" id="adminTimeInput" placeholder="00:00.000" />
-        </div>
-        <div>
-          <label>Lien preuve (YouTube) :</label>
-          <input type="url" id="adminProofInput" placeholder="https://youtube.com/..." />
-        </div>
-      </div>
-      <button style="margin-top: 5px;" class="btn-success" onclick="adminCreateRun()">Enregistrer et valider ce chrono</button>
-      <div id="adminRunMsg" style="margin-top: 5px; font-size: 0.9rem;"></div>
-
-      <hr style="border: none; border-top: 1px solid #334155; margin: 20px 0;" />
-
-      <!-- 3. LISTE D'ATTENTE DES RUNS -->
+      <!-- LISTE D'ATTENTE DES RUNS -->
       <h4>⏳ Runs en attente de vérification</h4>
       <div id="pendingRunsList">Chargement des runs en attente...</div>
     </div>
 
-    <!-- SOUMETTRE UN TEMPS (POUR TOUT JOUEUR CONNECTÉ) -->
+    <!-- SOUMETTRE UN TEMPS (JOUEURS & ADMIN) -->
     <div class="card">
-      <h3>🚀 Soumettre mon chrono</h3>
+      <h3>🚀 Soumettre un chrono</h3>
+
+      <!-- SÉLECTION JOUEUR (VISIBLE UNIQUEMENT POUR L'ADMIN) -->
+      <div id="adminPlayerSelectContainer" class="hidden" style="margin-bottom: 12px; background: #0f172a; padding: 12px; border-radius: 8px; border: 1px solid #eab308;">
+        <label style="color: #eab308; font-weight: bold;">👑 Soumettre pour le joueur :</label>
+        <select id="targetPlayerSelect"></select>
+        <label style="display: flex; align-items: center; gap: 8px; margin-top: 8px; cursor: pointer; font-size: 0.9rem;">
+          <input type="checkbox" id="adminAutoApprove" checked style="width: auto; margin: 0;" />
+          Valider immédiatement dans le classement (ne pas mettre en attente)
+        </label>
+      </div>
+
       <div class="grid-2">
         <div>
           <label>Jeu :</label>
@@ -208,7 +183,7 @@
           <input type="url" id="runProof" placeholder="https://youtube.com/..." />
         </div>
       </div>
-      <button style="margin-top: 12px;" onclick="submitRun()">Envoyer pour vérification</button>
+      <button style="margin-top: 12px;" onclick="submitRun()">Envoyer le chrono</button>
       <div id="runMsg" style="margin-top: 8px; font-size: 0.9rem;"></div>
     </div>
 
@@ -269,7 +244,6 @@
   let allProfiles = [];
   let verifiedRuns = [];
 
-  // Vérification de session au chargement de la page
   window.addEventListener('DOMContentLoaded', async () => {
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (session && session.user) {
@@ -278,7 +252,6 @@
     }
   });
 
-  // Parse "01:24.500" -> 84.5
   function parseTimeToSeconds(timeStr) {
     if (!timeStr) return null;
     const parts = timeStr.trim().split(':');
@@ -299,7 +272,6 @@
     }
   }
 
-  // 84.5 -> "01:24.500"
   function formatSecondsToTime(totalSec) {
     if (totalSec == null || isNaN(totalSec)) return '-';
     const hours = Math.floor(totalSec / 3600);
@@ -371,6 +343,7 @@
       badge.classList.add('badge-admin');
       document.getElementById('adminPanel').classList.remove('hidden');
       document.getElementById('adminActionTh').classList.remove('hidden');
+      document.getElementById('adminPlayerSelectContainer').classList.remove('hidden');
       await loadProfilesList();
       await loadPendingRuns();
     }
@@ -382,10 +355,11 @@
   async function loadProfilesList() {
     const { data } = await supabaseClient.from('profiles').select('id, username').order('username');
     allProfiles = data || [];
-    const select = document.getElementById('adminUserSelect');
+    const select = document.getElementById('targetPlayerSelect');
     select.innerHTML = '';
     allProfiles.forEach(p => {
-      select.innerHTML += `<option value="${p.id}">${p.username}</option>`;
+      const isCurrent = p.id === currentUser.id ? 'selected' : '';
+      select.innerHTML += `<option value="${p.id}" ${isCurrent}>${p.username} ${p.id === currentUser.id ? '(Moi)' : ''}</option>`;
     });
   }
 
@@ -399,38 +373,24 @@
     const gameSelectAdmin = document.getElementById('gameSelectForCategory');
     const gameSelectRun = document.getElementById('runGameSelect');
     const filterGameSelect = document.getElementById('filterGameSelect');
-    const adminGameSelect = document.getElementById('adminGameSelect');
 
     gameSelectAdmin.innerHTML = '';
     gameSelectRun.innerHTML = '<option value="">Sélectionner un jeu</option>';
     filterGameSelect.innerHTML = '<option value="all">Tous les jeux</option>';
-    adminGameSelect.innerHTML = '<option value="">Sélectionner un jeu</option>';
 
     allGames.forEach(g => {
       gameSelectAdmin.innerHTML += `<option value="${g.id}">${g.title}</option>`;
       gameSelectRun.innerHTML += `<option value="${g.id}">${g.title}</option>`;
       filterGameSelect.innerHTML += `<option value="${g.id}">${g.title}</option>`;
-      adminGameSelect.innerHTML += `<option value="${g.id}">${g.title}</option>`;
     });
 
     loadCategoriesForRun();
-    loadAdminCategories();
     onFilterGameChange();
   }
 
   function loadCategoriesForRun() {
     const gameId = document.getElementById('runGameSelect').value;
     const catSelect = document.getElementById('runCategorySelect');
-    catSelect.innerHTML = '';
-    const filtered = allCategories.filter(c => c.game_id == gameId);
-    filtered.forEach(c => {
-      catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-    });
-  }
-
-  function loadAdminCategories() {
-    const gameId = document.getElementById('adminGameSelect').value;
-    const catSelect = document.getElementById('adminCategorySelect');
     catSelect.innerHTML = '';
     const filtered = allCategories.filter(c => c.game_id == gameId);
     filtered.forEach(c => {
@@ -469,7 +429,6 @@
     await loadGamesAndCategories();
   }
 
-  // Soumission joueur (mise en attente)
   async function submitRun() {
     const category_id = document.getElementById('runCategorySelect').value;
     const timeInput = document.getElementById('runTimeString').value;
@@ -484,12 +443,23 @@
       return;
     }
 
+    // Détermine le joueur cible et le statut
+    let targetUserId = currentUser.id;
+    let status = 'pending';
+
+    if (currentProfile && currentProfile.role === 'admin') {
+      const selectedId = document.getElementById('targetPlayerSelect').value;
+      if (selectedId) targetUserId = selectedId;
+      const autoApprove = document.getElementById('adminAutoApprove').checked;
+      status = autoApprove ? 'verified' : 'pending';
+    }
+
     const { error } = await supabaseClient.from('runs').insert([{
-      user_id: currentUser.id,
+      user_id: targetUserId,
       category_id,
       time_seconds,
       proof_url,
-      status: 'pending'
+      status
     }]);
 
     if (error) {
@@ -497,50 +467,18 @@
       msg.innerText = error.message;
     } else {
       msg.style.color = '#22c55e';
-      msg.innerText = "Chrono soumis ! Il apparaîtra dès que l'admin l'aura vérifié.";
+      msg.innerText = status === 'verified' 
+        ? "Chrono ajouté et validé directement dans le classement !" 
+        : "Chrono envoyé ! En attente de validation.";
       document.getElementById('runTimeString').value = '';
       document.getElementById('runProof').value = '';
-      if (currentProfile.role === 'admin') loadPendingRuns();
+      if (currentProfile.role === 'admin') {
+        loadPendingRuns();
+        fetchLeaderboard();
+      }
     }
   }
 
-  // Ajout direct par l'admin pour un joueur
-  async function adminCreateRun() {
-    const user_id = document.getElementById('adminUserSelect').value;
-    const category_id = document.getElementById('adminCategorySelect').value;
-    const timeInput = document.getElementById('adminTimeInput').value;
-    const proof_url = document.getElementById('adminProofInput').value.trim();
-    const msg = document.getElementById('adminRunMsg');
-
-    const time_seconds = parseTimeToSeconds(timeInput);
-
-    if (!user_id || !category_id || time_seconds === null || time_seconds <= 0) {
-      msg.style.color = '#ef4444';
-      msg.innerText = "Formulaire incomplet ou chrono invalide.";
-      return;
-    }
-
-    const { error } = await supabaseClient.from('runs').insert([{
-      user_id,
-      category_id,
-      time_seconds,
-      proof_url,
-      status: 'verified'
-    }]);
-
-    if (error) {
-      msg.style.color = '#ef4444';
-      msg.innerText = error.message;
-    } else {
-      msg.style.color = '#22c55e';
-      msg.innerText = "Temps ajouté et validé directement !";
-      document.getElementById('adminTimeInput').value = '';
-      document.getElementById('adminProofInput').value = '';
-      await fetchLeaderboard();
-    }
-  }
-
-  // Modification directe d'un temps par l'admin depuis le classement
   async function editRun(runId, currentSeconds) {
     const currentFormatted = formatSecondsToTime(currentSeconds);
     const newTime = prompt("Modifier le chrono (format MM:SS.ms) :", currentFormatted);
@@ -564,7 +502,6 @@
     }
   }
 
-  // Suppression d'une run par l'admin
   async function deleteRun(runId) {
     if (!confirm("Voulez-vous vraiment supprimer ce temps ?")) return;
     const { error } = await supabaseClient.from('runs').delete().eq('id', runId);
@@ -633,7 +570,6 @@
     });
   }
 
-  // LISTE D'ATTENTE AVEC PSEUDO + TEMPS + LIEN YOUTUBE
   async function loadPendingRuns() {
     const { data: runs } = await supabaseClient
       .from('runs')
