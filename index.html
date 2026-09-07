@@ -54,11 +54,50 @@
     .btn-edit { background: #6366f1; }
     .btn-edit:hover { background: #4f46e5; }
     .secondary-btn { background: #475569; }
+
+    /* NAVIGATION PAR ONGLETS */
+    .nav-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #334155;
+      padding-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .tab-btn {
+      background: #1e293b;
+      color: #94a3b8;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 10px 18px;
+      font-size: 0.95rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover {
+      background: #334155;
+      color: white;
+    }
+    .tab-btn.active {
+      background: #3b82f6;
+      color: white;
+      border-color: #3b82f6;
+    }
+    .tab-btn.admin-tab {
+      border-color: #eab308;
+      color: #eab308;
+    }
+    .tab-btn.admin-tab.active {
+      background: #eab308;
+      color: black;
+    }
+
     .header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 10px;
+      margin-bottom: 15px;
     }
     .badge {
       display: inline-block;
@@ -112,7 +151,7 @@
       grid-template-columns: 1fr 1fr;
       gap: 15px;
     }
-    .hidden { display: none; }
+    .hidden { display: none !important; }
     .radio-group {
       display: flex;
       gap: 20px;
@@ -145,7 +184,7 @@
     <div id="authMsg" style="margin-top: 10px; font-size: 0.9rem; text-align: center;"></div>
   </div>
 
-  <!-- APPLICATION -->
+  <!-- APPLICATION GLOBALE -->
   <div id="appSection" class="hidden">
     <div class="header">
       <div>
@@ -155,95 +194,147 @@
       <button class="secondary-btn" onclick="logout()">Déconnexion</button>
     </div>
 
-    <!-- PANNEAU ADMIN -->
-    <div class="card hidden" id="adminPanel" style="border: 1px solid #eab308;">
-      <h3 style="color: #eab308;">👑 Panneau Administrateur</h3>
-      <div class="grid-2">
-        <div>
-          <h4>Ajouter un jeu</h4>
-          <input type="text" id="newGameTitle" placeholder="Ex: Shutter" />
-          <button onclick="addGame()">Créer le jeu</button>
-        </div>
-        <div>
-          <h4>Ajouter une catégorie</h4>
-          <select id="gameSelectForCategory"></select>
-          <input type="text" id="newCategoryName" placeholder="Ex: NMG, Any%" />
-          <button onclick="addCategory()">Créer la catégorie</button>
-        </div>
-      </div>
-
-      <h4 style="margin-top: 20px;">⏳ Runs en attente de vérification</h4>
-      <div id="pendingRunsList">Aucune run en attente.</div>
+    <!-- BARRE D'ONGLETS -->
+    <div class="nav-tabs">
+      <button class="tab-btn active" onclick="switchTab('tab-leaderboard')">🏆 Classement</button>
+      <button class="tab-btn" onclick="switchTab('tab-btt')">🟡 BTT</button>
+      <button class="tab-btn" onclick="switchTab('tab-submit')">🚀 Soumettre run</button>
+      <button class="tab-btn" onclick="switchTab('tab-profile')">👤 Profil</button>
+      <button class="tab-btn admin-tab hidden" id="tabBtnAdmin" onclick="switchTab('tab-admin')">👑 Admin</button>
     </div>
 
-    <!-- SOUMETTRE UN CHRONO -->
-    <div class="card">
-      <h3>🚀 Soumettre un chrono</h3>
-
-      <div id="adminUserSelector" class="hidden" style="background:#0f172a; padding: 10px; border-radius: 8px; margin-bottom: 12px; border: 1px dashed #eab308;">
-        <label style="color:#eab308; font-weight:bold;">👑 Soumettre pour le joueur :</label>
-        <select id="submitForUser"></select>
-        <label style="display:flex; align-items:center; gap:8px; margin-top:8px; cursor:pointer;">
-          <input type="checkbox" id="autoValidateCheck" style="width:auto; margin:0;" />
-          Valider immédiatement dans le classement (ne pas mettre en attente)
-        </label>
+    <!-- ONGLET 1 : CLASSEMENT OFFICIEL (HORS BTT) -->
+    <div id="tab-leaderboard" class="tab-content">
+      <div class="card">
+        <h3>🏆 Classement officiel</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Tag</th>
+              <th>Jeu</th>
+              <th>Catégorie</th>
+              <th>Joueur</th>
+              <th>Temps</th>
+              <th>Preuve</th>
+              <th class="admin-col hidden">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody">
+            <tr><td colspan="7">Chargement des scores...</td></tr>
+          </tbody>
+        </table>
       </div>
-
-      <div class="grid-2">
-        <div>
-          <label>Jeu :</label>
-          <select id="runGameSelect" onchange="loadCategoriesForRun()"></select>
-        </div>
-        <div>
-          <label>Catégorie :</label>
-          <select id="runCategorySelect"></select>
-        </div>
-      </div>
-
-      <div class="grid-2" style="margin-top: 10px;">
-        <div>
-          <label>Temps :</label>
-          <input type="text" id="runTime" placeholder="Ex: 04:48.520" />
-        </div>
-        <div>
-          <label>Lien de la preuve :</label>
-          <input type="url" id="runProof" placeholder="https://youtube.com/..." />
-        </div>
-      </div>
-
-      <div style="margin-top: 10px;">
-        <label style="font-weight: bold;">Mention spéciale :</label>
-        <div class="radio-group">
-          <label><input type="radio" name="runTag" value="" checked /> Normal</label>
-          <label style="color: #ef4444; font-weight:bold;"><input type="radio" name="runTag" value="WR" /> 🔴 WR (World Record)</label>
-          <label style="color: #eab308; font-weight:bold;"><input type="radio" name="runTag" value="BTT" /> 🟡 BTT Segment</label>
-        </div>
-      </div>
-
-      <button style="margin-top: 12px; width: 100%;" onclick="submitRun()">Envoyer le chrono</button>
-      <div id="runMsg" style="margin-top: 8px; font-size: 0.9rem;"></div>
     </div>
 
-    <!-- CLASSEMENT -->
-    <div class="card">
-      <h3>🏆 Classement officiel</h3>
-      <table>
-        <thead>
-          <tr>
-            <th>Tag</th>
-            <th>Jeu</th>
-            <th>Catégorie</th>
-            <th>Joueur</th>
-            <th>Temps</th>
-            <th>Preuve</th>
-            <th id="thAdminAction" class="hidden">Actions</th>
-          </tr>
-        </thead>
-        <tbody id="leaderboardBody">
-          <tr><td colspan="7">Chargement des scores...</td></tr>
-        </tbody>
-      </table>
+    <!-- ONGLET 2 : BTT (BEST TIME TRACKER) -->
+    <div id="tab-btt" class="tab-content hidden">
+      <div class="card">
+        <h3>🟡 Segments BTT</h3>
+        <table>
+          <thead>
+            <tr>
+              <th>Tag</th>
+              <th>Jeu</th>
+              <th>Catégorie</th>
+              <th>Joueur</th>
+              <th>Temps</th>
+              <th>Preuve</th>
+              <th class="admin-col hidden">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="bttBody">
+            <tr><td colspan="7">Chargement des segments...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
+
+    <!-- ONGLET 3 : SOUMETTRE UNE RUN -->
+    <div id="tab-submit" class="tab-content hidden">
+      <div class="card">
+        <h3>🚀 Soumettre une run</h3>
+
+        <div id="adminUserSelector" class="hidden" style="background:#0f172a; padding: 10px; border-radius: 8px; margin-bottom: 12px; border: 1px dashed #eab308;">
+          <label style="color:#eab308; font-weight:bold;">👑 Soumettre pour le joueur :</label>
+          <select id="submitForUser"></select>
+          <label style="display:flex; align-items:center; gap:8px; margin-top:8px; cursor:pointer;">
+            <input type="checkbox" id="autoValidateCheck" style="width:auto; margin:0;" />
+            Valider immédiatement dans le classement (ne pas mettre en attente)
+          </label>
+        </div>
+
+        <div class="grid-2">
+          <div>
+            <label>Jeu :</label>
+            <select id="runGameSelect" onchange="loadCategoriesForRun()"></select>
+          </div>
+          <div>
+            <label>Catégorie :</label>
+            <select id="runCategorySelect"></select>
+          </div>
+        </div>
+
+        <div class="grid-2" style="margin-top: 10px;">
+          <div>
+            <label>Temps :</label>
+            <input type="text" id="runTime" placeholder="Ex: 04:48.520" />
+          </div>
+          <div>
+            <label>Lien de la preuve :</label>
+            <input type="url" id="runProof" placeholder="https://youtube.com/..." />
+          </div>
+        </div>
+
+        <div style="margin-top: 10px;">
+          <label style="font-weight: bold;">Type de run :</label>
+          <div class="radio-group">
+            <label><input type="radio" name="runTag" value="" checked /> Normal</label>
+            <label style="color: #ef4444; font-weight:bold;"><input type="radio" name="runTag" value="WR" /> 🔴 WR (World Record)</label>
+            <label style="color: #eab308; font-weight:bold;"><input type="radio" name="runTag" value="BTT" /> 🟡 BTT Segment</label>
+          </div>
+        </div>
+
+        <button style="margin-top: 12px; width: 100%;" onclick="submitRun()">Envoyer le chrono</button>
+        <div id="runMsg" style="margin-top: 8px; font-size: 0.9rem;"></div>
+      </div>
+    </div>
+
+    <!-- ONGLET 4 : PROFIL -->
+    <div id="tab-profile" class="tab-content hidden">
+      <div class="card">
+        <h3>👤 Mon profil</h3>
+        <p><strong>Pseudo :</strong> <span id="profUsername">-</span></p>
+        <p><strong>Rôle :</strong> <span id="profRole">-</span></p>
+        <p><strong>Identifiant :</strong> <code id="profId" style="color: #94a3b8;">-</code></p>
+        <hr style="border: 0; border-top: 1px solid #334155; margin: 15px 0;" />
+        <h4>Mes runs validées</h4>
+        <div id="myRunsList">Chargement...</div>
+      </div>
+    </div>
+
+    <!-- ONGLET 5 : ADMIN -->
+    <div id="tab-admin" class="tab-content hidden">
+      <div class="card" style="border: 1px solid #eab308;">
+        <h3 style="color: #eab308;">👑 Panneau Administrateur</h3>
+        <div class="grid-2">
+          <div>
+            <h4>Ajouter un jeu</h4>
+            <input type="text" id="newGameTitle" placeholder="Ex: Shutter" />
+            <button onclick="addGame()">Créer le jeu</button>
+          </div>
+          <div>
+            <h4>Ajouter une catégorie</h4>
+            <select id="gameSelectForCategory"></select>
+            <input type="text" id="newCategoryName" placeholder="Ex: NMG, Any%" />
+            <button onclick="addCategory()">Créer la catégorie</button>
+          </div>
+        </div>
+
+        <h4 style="margin-top: 25px;">⏳ Runs en attente de vérification</h4>
+        <div id="pendingRunsList">Aucune run en attente.</div>
+      </div>
+    </div>
+
   </div>
 
 </div>
@@ -271,6 +362,21 @@
       await initApp();
     }
   });
+
+  function switchTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+
+    document.getElementById(tabId).classList.remove('hidden');
+
+    const clickedBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => {
+      const onclickAttr = b.getAttribute('onclick') || '';
+      return onclickAttr.includes(tabId);
+    });
+    if (clickedBtn) clickedBtn.classList.add('active');
+
+    if (tabId === 'tab-profile') loadMyProfileData();
+  }
 
   async function login() {
     const pseudo = document.getElementById('username').value.trim();
@@ -320,9 +426,9 @@
 
     if (currentProfile.role === 'admin') {
       badge.classList.add('badge-admin');
-      document.getElementById('adminPanel').classList.remove('hidden');
+      document.getElementById('tabBtnAdmin').classList.remove('hidden');
       document.getElementById('adminUserSelector').classList.remove('hidden');
-      document.getElementById('thAdminAction').classList.remove('hidden');
+      document.querySelectorAll('.admin-col').forEach(el => el.classList.remove('hidden'));
       await loadProfilesForAdmin();
       loadPendingRuns();
     }
@@ -451,49 +557,59 @@
       `)
       .eq('status', 'verified');
 
-    const tbody = document.getElementById('leaderboardBody');
-    tbody.innerHTML = '';
+    const leaderboardBody = document.getElementById('leaderboardBody');
+    const bttBody = document.getElementById('bttBody');
+    leaderboardBody.innerHTML = '';
+    bttBody.innerHTML = '';
 
     const isAdmin = currentProfile && currentProfile.role === 'admin';
 
-    if (!runs || runs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="${isAdmin ? 7 : 6}">Aucun chrono validé pour le moment.</td></tr>`;
-      return;
+    const normalRuns = (runs || []).filter(r => r.run_tag !== 'BTT');
+    const bttRuns = (runs || []).filter(r => r.run_tag === 'BTT');
+
+    function renderRows(list, container) {
+      if (list.length === 0) {
+        container.innerHTML = `<tr><td colspan="${isAdmin ? 7 : 6}">Aucun chrono validé.</td></tr>`;
+        return;
+      }
+
+      list.forEach(r => {
+        let tagBadge = '-';
+        let rowClass = '';
+        if (r.run_tag === 'WR') {
+          tagBadge = '<span class="badge-wr">🔴 WR</span>';
+          rowClass = 'row-wr';
+        } else if (r.run_tag === 'BTT') {
+          tagBadge = '<span class="badge-btt">🟡 BTT</span>';
+          rowClass = 'row-btt';
+        }
+
+        let actionsHtml = '';
+        if (isAdmin) {
+          actionsHtml = `
+            <td class="admin-col">
+              <button class="btn-edit" onclick="editRunTime(${r.id}, '${r.time_seconds}')">✏️</button>
+              <button class="btn-danger" onclick="deleteRun(${r.id})">🗑️</button>
+            </td>
+          `;
+        }
+
+        container.innerHTML += `
+          <tr class="${rowClass}">
+            <td>${tagBadge}</td>
+            <td><strong>${r.categories?.games?.title || '-'}</strong></td>
+            <td>${r.categories?.name || '-'}</td>
+            <td>${r.profiles?.username || 'Anonyme'}</td>
+            <td><strong style="font-family:monospace; font-size:1.1rem;">${r.time_seconds}</strong></td>
+            <td>${r.proof_url ? `<a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">Voir vidéo</a>` : '-'}</td>
+            ${actionsHtml}
+          </tr>
+        `;
+      });
     }
 
-    runs.forEach(r => {
-      let tagBadge = '-';
-      let rowClass = '';
-      if (r.run_tag === 'WR') {
-        tagBadge = '<span class="badge-wr">🔴 WR</span>';
-        rowClass = 'row-wr';
-      } else if (r.run_tag === 'BTT') {
-        tagBadge = '<span class="badge-btt">🟡 BTT</span>';
-        rowClass = 'row-btt';
-      }
-
-      let actionsHtml = '';
-      if (isAdmin) {
-        actionsHtml = `
-          <td>
-            <button class="btn-edit" onclick="editRunTime(${r.id}, '${r.time_seconds}')">✏️ Modifier</button>
-            <button class="btn-danger" onclick="deleteRun(${r.id})">🗑️</button>
-          </td>
-        `;
-      }
-
-      tbody.innerHTML += `
-        <tr class="${rowClass}">
-          <td>${tagBadge}</td>
-          <td><strong>${r.categories?.games?.title || '-'}</strong></td>
-          <td>${r.categories?.name || '-'}</td>
-          <td>${r.profiles?.username || 'Anonyme'}</td>
-          <td><strong style="font-family:monospace; font-size:1.1rem; letter-spacing: 0.5px;">${r.time_seconds}</strong></td>
-          <td>${r.proof_url ? `<a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">Voir vidéo</a>` : '-'}</td>
-          ${actionsHtml}
-        </tr>
-      `;
-    });
+    renderRows(normalRuns, leaderboardBody);
+    renderRows(bttRuns, bttBody);
   }
 
   async function loadPendingRuns() {
@@ -538,7 +654,7 @@
             ${tagBadge ? tagBadge + ' ' : ''}
             <strong>${r.profiles?.username}</strong> — ${r.categories?.games?.title} (${r.categories?.name}) : 
             <strong style="color:#38bdf8; font-family:monospace; font-size:1.1rem;">${r.time_seconds}</strong>
-            ${r.proof_url ? ` | <a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">📺 Lien vidéo</a>` : ''}
+            ${r.proof_url ? ` | <a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">📺 Vidéo</a>` : ''}
           </div>
           <div style="display:flex; gap:6px;">
             <button class="btn-edit" onclick="editRunTime(${r.id}, '${r.time_seconds}')">✏️ Modifier</button>
@@ -550,7 +666,37 @@
     });
   }
 
-  // MODIFIER LE TEMPS D'UNE RUN
+  async function loadMyProfileData() {
+    document.getElementById('profUsername').innerText = currentProfile.username;
+    document.getElementById('profRole').innerText = currentProfile.role.toUpperCase();
+    document.getElementById('profId').innerText = currentUser.id;
+
+    const { data: myRuns } = await supabaseClient
+      .from('runs')
+      .select(`
+        id,
+        time_seconds,
+        status,
+        run_tag,
+        categories ( name, games ( title ) )
+      `)
+      .eq('user_id', currentUser.id);
+
+    const container = document.getElementById('myRunsList');
+    if (!myRuns || myRuns.length === 0) {
+      container.innerHTML = '<p style="color:#94a3b8;">Aucune run soumise pour le moment.</p>';
+      return;
+    }
+
+    container.innerHTML = myRuns.map(r => `
+      <div style="background:#0f172a; padding:10px; border-radius:6px; margin-bottom:8px;">
+        <strong>${r.categories?.games?.title} (${r.categories?.name})</strong> : ${r.time_seconds} 
+        — Statut : <span style="color:${r.status === 'verified' ? '#22c55e' : '#eab308'}; font-weight:bold;">${r.status}</span>
+        ${r.run_tag ? `[${r.run_tag}]` : ''}
+      </div>
+    `).join('');
+  }
+
   async function editRunTime(runId, currentVal) {
     const newTime = prompt("Corriger le temps :", currentVal);
     if (newTime !== null && newTime.trim() !== '') {
@@ -560,7 +706,6 @@
     }
   }
 
-  // SUPPRIMER UNE RUN DU CLASSEMENT
   async function deleteRun(runId) {
     if (confirm("Supprimer définitivement ce chrono ?")) {
       await supabaseClient.from('runs').delete().eq('id', runId);
