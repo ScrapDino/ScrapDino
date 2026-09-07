@@ -86,12 +86,12 @@
     }
 
     .row-wr {
-      background: rgba(239, 68, 68, 0.18) !important;
-      border-left: 4px solid #ef4444;
+      background: rgba(239, 68, 68, 0.22) !important;
+      border-left: 5px solid #ef4444;
     }
     .row-btt {
-      background: rgba(234, 179, 8, 0.18) !important;
-      border-left: 4px solid #eab308;
+      background: rgba(234, 179, 8, 0.22) !important;
+      border-left: 5px solid #eab308;
     }
 
     table {
@@ -200,11 +200,11 @@
 
       <div class="grid-2" style="margin-top: 10px;">
         <div>
-          <label>Temps (ex: <code>04:48.520</code> ou <code>48.120</code>) :</label>
-          <input type="text" id="runTime" placeholder="MM:SS.ms ou SS.ms" />
+          <label>Temps :</label>
+          <input type="text" id="runTime" placeholder="Ex: 04:48.520" />
         </div>
         <div>
-          <label>Lien de la preuve (YouTube, Twitch) :</label>
+          <label>Lien de la preuve :</label>
           <input type="url" id="runProof" placeholder="https://youtube.com/..." />
         </div>
       </div>
@@ -259,44 +259,6 @@
   function pseudoToEmail(pseudo) {
     const clean = pseudo.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
     return `${clean}@speedrun.com`;
-  }
-
-  function parseTimeToSeconds(inputStr) {
-    if (!inputStr) return null;
-    const clean = inputStr.trim().replace(',', '.');
-    const parts = clean.split(':');
-    let totalSeconds = 0;
-
-    if (parts.length === 2) {
-      const minutes = Number(parts[0]);
-      const seconds = Number(parts[1]);
-      if (isNaN(minutes) || isNaN(seconds)) return null;
-      totalSeconds = (minutes * 60) + seconds;
-    } else if (parts.length === 1) {
-      totalSeconds = Number(parts[0]);
-      if (isNaN(totalSeconds)) return null;
-    } else {
-      return null;
-    }
-
-    return Number(totalSeconds.toFixed(3));
-  }
-
-  function formatSecondsToTime(val) {
-    const num = Number(val);
-    if (isNaN(num)) return '-';
-
-    const totalMs = Math.round(num * 1000);
-    const ms = totalMs % 1000;
-    const totalSecs = Math.floor(totalMs / 1000);
-    const mins = Math.floor(totalSecs / 60);
-    const secs = totalSecs % 60;
-
-    const formattedMins = String(mins).padStart(2, '0');
-    const formattedSecs = String(secs).padStart(2, '0');
-    const formattedMs = String(ms).padStart(3, '0');
-
-    return `${formattedMins}:${formattedSecs}.${formattedMs}`;
   }
 
   async function login() {
@@ -419,15 +381,14 @@
 
   async function submitRun() {
     const category_id = document.getElementById('runCategorySelect').value;
-    const rawTime = document.getElementById('runTime').value;
-    const time_seconds = parseTimeToSeconds(rawTime);
+    const rawTime = document.getElementById('runTime').value.trim();
     const proof_url = document.getElementById('runProof').value.trim();
     const msg = document.getElementById('runMsg');
     const selectedTag = document.querySelector('input[name="runTag"]:checked')?.value || null;
 
-    if (!category_id || time_seconds === null) {
+    if (!category_id || !rawTime) {
       msg.style.color = '#ef4444';
-      msg.innerText = "Format invalide. Exemple attendu : 04:48.520";
+      msg.innerText = "Sélectionne une catégorie et saisis un chrono.";
       return;
     }
 
@@ -445,7 +406,7 @@
     const { error } = await supabaseClient.from('runs').insert([{
       user_id: targetUserId,
       category_id,
-      time_seconds,
+      time_seconds: rawTime,
       proof_url,
       status: targetStatus,
       run_tag: selectedTag
@@ -456,7 +417,7 @@
       msg.innerText = error.message;
     } else {
       msg.style.color = '#22c55e';
-      msg.innerText = targetStatus === 'verified' ? "Chrono validé et publié immédiatement !" : "Chrono envoyé ! En attente de vérification.";
+      msg.innerText = targetStatus === 'verified' ? "Chrono validé et publié !" : "Chrono envoyé ! En attente.";
       document.getElementById('runTime').value = '';
       document.getElementById('runProof').value = '';
       document.querySelector('input[name="runTag"][value=""]').checked = true;
@@ -476,8 +437,7 @@
         categories ( name, games ( title ) ),
         profiles ( username )
       `)
-      .eq('status', 'verified')
-      .order('time_seconds', { ascending: true });
+      .eq('status', 'verified');
 
     const tbody = document.getElementById('leaderboardBody');
     tbody.innerHTML = '';
@@ -504,7 +464,7 @@
           <td><strong>${r.categories?.games?.title || '-'}</strong></td>
           <td>${r.categories?.name || '-'}</td>
           <td>${r.profiles?.username || 'Anonyme'}</td>
-          <td><strong style="font-family:monospace; font-size:1.05rem;">${formatSecondsToTime(r.time_seconds)}</strong></td>
+          <td><strong style="font-family:monospace; font-size:1.1rem; letter-spacing: 0.5px;">${r.time_seconds}</strong></td>
           <td>${r.proof_url ? `<a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">Voir vidéo</a>` : '-'}</td>
         </tr>
       `;
@@ -535,21 +495,25 @@
     runs.forEach(r => {
       let borderStyle = '#334155';
       let tagBadge = '';
+      let blockClass = '';
+
       if (r.run_tag === 'WR') {
         borderStyle = '#ef4444';
         tagBadge = '<span class="badge-wr">🔴 WR</span>';
+        blockClass = 'row-wr';
       } else if (r.run_tag === 'BTT') {
         borderStyle = '#eab308';
         tagBadge = '<span class="badge-btt">🟡 BTT Segment</span>';
+        blockClass = 'row-btt';
       }
 
       container.innerHTML += `
-        <div style="background:#0f172a; border-left: 5px solid ${borderStyle}; padding:12px; border-radius:6px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+        <div class="${blockClass}" style="background:#0f172a; border-left: 5px solid ${borderStyle}; padding:12px; border-radius:6px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
           <div>
             ${tagBadge ? tagBadge + ' ' : ''}
             <strong>${r.profiles?.username}</strong> — ${r.categories?.games?.title} (${r.categories?.name}) : 
-            <strong style="color:#38bdf8; font-family:monospace;">${formatSecondsToTime(r.time_seconds)}</strong>
-            ${r.proof_url ? ` | <a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">📺 Voir la vidéo</a>` : ''}
+            <strong style="color:#38bdf8; font-family:monospace; font-size:1.1rem;">${r.time_seconds}</strong>
+            ${r.proof_url ? ` | <a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">📺 Lien vidéo</a>` : ''}
           </div>
           <div style="display:flex; gap:8px;">
             <button class="btn-success" onclick="updateRunStatus(${r.id}, 'verified')">✅ Valider</button>
