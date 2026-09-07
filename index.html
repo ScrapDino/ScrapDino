@@ -104,13 +104,16 @@
 
 <div class="container">
 
-  <!-- VUE CONNEXION -->
-  <div class="card" id="authSection" style="max-width: 400px; margin: 60px auto;">
-    <h1 style="text-align: center;">⏱️ Speedrun Tracker</h1>
+  <!-- VUE AUTHENTIFICATION (CONNEXION & INSCRIPTION) -->
+  <div class="card" id="authSection" style="max-width: 400px; margin: 60px auto; text-align: center;">
+    <h1>⏱️ Speedrun Tracker</h1>
     <input type="text" id="username" placeholder="Pseudo du joueur" autocomplete="username" />
     <input type="password" id="password" placeholder="Mot de passe (6 car. min)" autocomplete="current-password" />
+    
     <button style="width: 100%; margin-top: 10px;" onclick="login()">Se connecter</button>
-    <div id="authMsg" style="margin-top: 10px; font-size: 0.9rem; text-align: center;"></div>
+    <button class="secondary-btn" style="width: 100%; margin-top: 8px;" onclick="signUp()">Créer un compte</button>
+    
+    <div id="authMsg" style="margin-top: 12px; font-size: 0.9rem;"></div>
   </div>
 
   <!-- VUE PRINCIPALE -->
@@ -244,6 +247,7 @@
   let allProfiles = [];
   let verifiedRuns = [];
 
+  // Vérifier la session existante au chargement
   window.addEventListener('DOMContentLoaded', async () => {
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (session && session.user) {
@@ -293,6 +297,7 @@
     return `${clean}@speedrun.com`;
   }
 
+  // Connexion
   async function login() {
     const pseudo = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
@@ -315,6 +320,55 @@
     } else {
       currentUser = data.user;
       await initApp();
+    }
+  }
+
+  // Inscription
+  async function signUp() {
+    const pseudo = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const msg = document.getElementById('authMsg');
+
+    if (!pseudo || !password) {
+      msg.style.color = '#ef4444';
+      msg.innerText = "Remplis le pseudo et le mot de passe.";
+      return;
+    }
+
+    if (password.length < 6) {
+      msg.style.color = '#ef4444';
+      msg.innerText = "Le mot de passe doit comporter au moins 6 caractères.";
+      return;
+    }
+
+    const email = pseudoToEmail(pseudo);
+
+    const { data, error } = await supabaseClient.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { username: pseudo }
+      }
+    });
+
+    if (error) {
+      msg.style.color = '#ef4444';
+      msg.innerText = error.message;
+    } else {
+      // Auto-connexion directe après création
+      currentUser = data.user;
+      const { data: signInData, error: signInErr } = await supabaseClient.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (!signInErr && signInData?.user) {
+        currentUser = signInData.user;
+        await initApp();
+      } else {
+        msg.style.color = '#22c55e';
+        msg.innerText = `Compte créé pour ${pseudo} ! Tu peux cliquer sur Se connecter.`;
+      }
     }
   }
 
@@ -443,7 +497,6 @@
       return;
     }
 
-    // Détermine le joueur cible et le statut
     let targetUserId = currentUser.id;
     let status = 'pending';
 
