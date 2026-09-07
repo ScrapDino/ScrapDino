@@ -232,6 +232,31 @@
       padding: 2px 7px;
       margin-left: 6px;
     }
+
+    .filter-bar {
+      background: #0f172a;
+      padding: 10px 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .filter-item {
+      flex: 1;
+      min-width: 180px;
+    }
+    .filter-item label {
+      font-size: 0.85rem;
+      color: #94a3b8;
+      font-weight: bold;
+      display: block;
+      margin-bottom: 2px;
+    }
+    .filter-item select {
+      margin: 0;
+    }
   </style>
 </head>
 <body>
@@ -272,6 +297,19 @@
     <div id="tab-leaderboard" class="tab-content">
       <div class="card">
         <h3>🏆 Classement officiel</h3>
+        
+        <!-- FILTRES JEU & CATÉGORIE -->
+        <div class="filter-bar">
+          <div class="filter-item">
+            <label>Filtrer par jeu :</label>
+            <select id="filterLeaderboardGame" onchange="onGameFilterChange('leaderboard')"></select>
+          </div>
+          <div class="filter-item">
+            <label>Filtrer par catégorie :</label>
+            <select id="filterLeaderboardCategory" onchange="renderLeaderboard()"></select>
+          </div>
+        </div>
+
         <table>
           <thead>
             <tr>
@@ -293,6 +331,19 @@
     <div id="tab-btt" class="tab-content hidden">
       <div class="card">
         <h3>🟡 Segments BTT</h3>
+
+        <!-- FILTRES JEU & CATÉGORIE BTT -->
+        <div class="filter-bar">
+          <div class="filter-item">
+            <label>Filtrer par jeu :</label>
+            <select id="filterBttGame" onchange="onGameFilterChange('btt')"></select>
+          </div>
+          <div class="filter-item">
+            <label>Filtrer par catégorie :</label>
+            <select id="filterBttCategory" onchange="renderLeaderboard()"></select>
+          </div>
+        </div>
+
         <table>
           <thead>
             <tr>
@@ -467,6 +518,7 @@
   let allGames = [];
   let allCategories = [];
   let allProfiles = [];
+  let cachedVerifiedRuns = [];
 
   function pseudoToEmail(pseudo) {
     const clean = pseudo.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
@@ -623,7 +675,49 @@
       gameSelectRun.innerHTML += `<option value="${g.id}">${g.title}</option>`;
     });
 
+    populateFilterDropdowns();
     loadCategoriesForRun();
+  }
+
+  function populateFilterDropdowns() {
+    const filterLGame = document.getElementById('filterLeaderboardGame');
+    const filterBGame = document.getElementById('filterBttGame');
+
+    filterLGame.innerHTML = '<option value="">Tous les jeux</option>';
+    filterBGame.innerHTML = '<option value="">Tous les jeux</option>';
+
+    allGames.forEach(g => {
+      filterLGame.innerHTML += `<option value="${g.id}">${g.title}</option>`;
+      filterBGame.innerHTML += `<option value="${g.id}">${g.title}</option>`;
+    });
+
+    onGameFilterChange('leaderboard');
+    onGameFilterChange('btt');
+  }
+
+  function onGameFilterChange(type) {
+    const gameSelect = type === 'leaderboard' 
+      ? document.getElementById('filterLeaderboardGame') 
+      : document.getElementById('filterBttGame');
+    const catSelect = type === 'leaderboard' 
+      ? document.getElementById('filterLeaderboardCategory') 
+      : document.getElementById('filterBttCategory');
+
+    const selectedGameId = gameSelect.value;
+    catSelect.innerHTML = '<option value="">Toutes les catégories</option>';
+
+    if (selectedGameId) {
+      const filteredCats = allCategories.filter(c => c.game_id == selectedGameId);
+      filteredCats.forEach(c => {
+        catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+      });
+    } else {
+      allCategories.forEach(c => {
+        catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+      });
+    }
+
+    renderLeaderboard();
   }
 
   function loadCategoriesForRun() {
@@ -713,14 +807,39 @@
       .select(`
         id,
         user_id,
+        category_id,
         stage,
         time_seconds,
         proof_url,
         run_tag,
-        categories ( name, games ( title ) ),
+        categories ( id, game_id, name, games ( id, title ) ),
         profiles ( username )
       `)
       .eq('status', 'verified');
+
+    cachedVerifiedRuns = runs || [];
+    renderLeaderboard();
+  }
+
+  function renderLeaderboard() {
+    const lGame = document.getElementById('filterLeaderboardGame').value;
+    const lCat = document.getElementById('filterLeaderboardCategory').value;
+    const bGame = document.getElementById('filterBttGame').value;
+    const bCat = document.getElementById('filterBttCategory').value;
+
+    const normalRuns = cachedVerifiedRuns.filter(r => {
+      if (r.run_tag === 'BTT') return false;
+      if (lGame && r.categories?.games?.id != lGame) return false;
+      if (lCat && r.category_id != lCat) return false;
+      return true;
+    });
+
+    const bttRuns = cachedVerifiedRuns.filter(r => {
+      if (r.run_tag !== 'BTT') return false;
+      if (bGame && r.categories?.games?.id != bGame) return false;
+      if (bCat && r.category_id != bCat) return false;
+      return true;
+    });
 
     const leaderboardBody = document.getElementById('leaderboardBody');
     const bttBody = document.getElementById('bttBody');
@@ -729,12 +848,9 @@
 
     const isAdmin = currentProfile && currentProfile.role === 'admin';
 
-    const normalRuns = (runs || []).filter(r => r.run_tag !== 'BTT');
-    const bttRuns = (runs || []).filter(r => r.run_tag === 'BTT');
-
     function renderRows(list, container) {
       if (list.length === 0) {
-        container.innerHTML = `<tr><td colspan="${isAdmin ? 5 : 4}">Aucun chrono validé.</td></tr>`;
+        container.innerHTML = `<tr><td colspan="${isAdmin ? 5 : 4}">Aucun chrono trouvé pour cette sélection.</td></tr>`;
         return;
       }
 
