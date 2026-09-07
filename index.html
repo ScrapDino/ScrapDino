@@ -17,7 +17,7 @@
     }
     .container {
       width: 100%;
-      max-width: 850px;
+      max-width: 900px;
     }
     .card {
       background: #1e293b;
@@ -53,6 +53,7 @@
     .btn-success:hover { background: #16a34a; }
     .secondary-btn { background: #475569; }
     .secondary-btn:hover { background: #334155; }
+    .btn-sm { padding: 5px 10px; font-size: 0.85rem; }
     .header {
       display: flex;
       justify-content: space-between;
@@ -84,7 +85,24 @@
       grid-template-columns: 1fr 1fr;
       gap: 15px;
     }
+    .grid-3 {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
     .hidden { display: none; }
+    .pending-item {
+      background: #0f172a;
+      border: 1px solid #334155;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
   </style>
 </head>
 <body>
@@ -100,7 +118,7 @@
     <div id="authMsg" style="margin-top: 10px; font-size: 0.9rem; text-align: center;"></div>
   </div>
 
-  <!-- VUE PRINCIPALE APRÈS CONNEXION -->
+  <!-- VUE PRINCIPALE -->
   <div id="appSection" class="hidden">
     <div class="header">
       <div>
@@ -110,9 +128,11 @@
       <button class="secondary-btn" onclick="logout()">Déconnexion</button>
     </div>
 
-    <!-- PANNEAU ADMIN (VISIBLE UNIQUEMENT SI ADMIN) -->
+    <!-- PANNEAU ADMINISTRATEUR -->
     <div class="card hidden" id="adminPanel" style="border: 1px solid #eab308;">
       <h3 style="color: #eab308;">👑 Panneau Administrateur</h3>
+
+      <!-- 1. GESTION DES JEUX ET CATÉGORIES -->
       <div class="grid-2">
         <div>
           <h4>Ajouter un jeu</h4>
@@ -127,13 +147,47 @@
         </div>
       </div>
 
-      <h4 style="margin-top: 20px;">Runs en attente de validation</h4>
-      <div id="pendingRunsList">Chargement...</div>
+      <hr style="border: none; border-top: 1px solid #334155; margin: 20px 0;" />
+
+      <!-- 2. AJOUTER / MODIFIER MANUELLEMENT LE TEMPS D'UN JOUEUR -->
+      <h4>Ajouter un temps pour un joueur</h4>
+      <div class="grid-3">
+        <div>
+          <label>Joueur :</label>
+          <select id="adminUserSelect"></select>
+        </div>
+        <div>
+          <label>Jeu :</label>
+          <select id="adminGameSelect" onchange="loadAdminCategories()"></select>
+        </div>
+        <div>
+          <label>Catégorie :</label>
+          <select id="adminCategorySelect"></select>
+        </div>
+      </div>
+      <div class="grid-2" style="margin-top: 8px;">
+        <div>
+          <label>Temps (<code>MM:SS.ms</code>) :</label>
+          <input type="text" id="adminTimeInput" placeholder="00:00.000" />
+        </div>
+        <div>
+          <label>Lien preuve (YouTube) :</label>
+          <input type="url" id="adminProofInput" placeholder="https://youtube.com/..." />
+        </div>
+      </div>
+      <button style="margin-top: 5px;" class="btn-success" onclick="adminCreateRun()">Enregistrer et valider ce chrono</button>
+      <div id="adminRunMsg" style="margin-top: 5px; font-size: 0.9rem;"></div>
+
+      <hr style="border: none; border-top: 1px solid #334155; margin: 20px 0;" />
+
+      <!-- 3. LISTE D'ATTENTE DES RUNS -->
+      <h4>⏳ Runs en attente de vérification</h4>
+      <div id="pendingRunsList">Chargement des runs en attente...</div>
     </div>
 
-    <!-- SOUMETTRE UN TEMPS (JOUEURS & ADMIN) -->
+    <!-- SOUMETTRE UN TEMPS (POUR TOUT JOUEUR CONNECTÉ) -->
     <div class="card">
-      <h3>🚀 Soumettre un chrono</h3>
+      <h3>🚀 Soumettre mon chrono</h3>
       <div class="grid-2">
         <div>
           <label>Jeu :</label>
@@ -150,11 +204,11 @@
           <input type="text" id="runTimeString" placeholder="00:00.000" />
         </div>
         <div>
-          <label>Lien de la preuve (YouTube, Twitch...) :</label>
-          <input type="url" id="runProof" placeholder="https://..." />
+          <label>Lien de la preuve (YouTube) :</label>
+          <input type="url" id="runProof" placeholder="https://youtube.com/..." />
         </div>
       </div>
-      <button style="margin-top: 12px;" onclick="submitRun()">Envoyer le chrono</button>
+      <button style="margin-top: 12px;" onclick="submitRun()">Envoyer pour vérification</button>
       <div id="runMsg" style="margin-top: 8px; font-size: 0.9rem;"></div>
     </div>
 
@@ -185,13 +239,15 @@
             <th>Joueur</th>
             <th>Temps</th>
             <th>Preuve</th>
+            <th id="adminActionTh" class="hidden">Actions Admin</th>
           </tr>
         </thead>
         <tbody id="leaderboardBody">
-          <tr><td colspan="6">Chargement des scores...</td></tr>
+          <tr><td colspan="7">Chargement des scores...</td></tr>
         </tbody>
       </table>
     </div>
+
   </div>
 
 </div>
@@ -205,10 +261,10 @@
   let currentProfile = null;
   let allGames = [];
   let allCategories = [];
+  let allProfiles = [];
   let verifiedRuns = [];
 
-  // --- FONCTIONS DE CONVERSION DE TEMPS ---
-  // Convertit "01:24.500" en secondes: 84.5
+  // Parse "01:24.500" -> 84.5
   function parseTimeToSeconds(timeStr) {
     if (!timeStr) return null;
     const parts = timeStr.trim().split(':');
@@ -229,7 +285,7 @@
     }
   }
 
-  // Convertit 84.5 secondes en "01:24.500"
+  // 84.5 -> "01:24.500"
   function formatSecondsToTime(totalSec) {
     if (totalSec == null || isNaN(totalSec)) return '-';
     const hours = Math.floor(totalSec / 3600);
@@ -258,7 +314,7 @@
 
     if (!pseudo || !password) {
       msg.style.color = '#ef4444';
-      msg.innerText = "Champs requis.";
+      msg.innerText = "Remplis ton pseudo et ton mot de passe.";
       return;
     }
 
@@ -300,11 +356,23 @@
     if (currentProfile.role === 'admin') {
       badge.classList.add('badge-admin');
       document.getElementById('adminPanel').classList.remove('hidden');
-      loadPendingRuns();
+      document.getElementById('adminActionTh').classList.remove('hidden');
+      await loadProfilesList();
+      await loadPendingRuns();
     }
 
     await loadGamesAndCategories();
     await fetchLeaderboard();
+  }
+
+  async function loadProfilesList() {
+    const { data } = await supabaseClient.from('profiles').select('id, username').order('username');
+    allProfiles = data || [];
+    const select = document.getElementById('adminUserSelect');
+    select.innerHTML = '';
+    allProfiles.forEach(p => {
+      select.innerHTML += `<option value="${p.id}">${p.username}</option>`;
+    });
   }
 
   async function loadGamesAndCategories() {
@@ -314,22 +382,25 @@
     allGames = games || [];
     allCategories = categories || [];
 
-    // Sélecteurs formulaire soumission et admin
     const gameSelectAdmin = document.getElementById('gameSelectForCategory');
     const gameSelectRun = document.getElementById('runGameSelect');
     const filterGameSelect = document.getElementById('filterGameSelect');
+    const adminGameSelect = document.getElementById('adminGameSelect');
 
     gameSelectAdmin.innerHTML = '';
     gameSelectRun.innerHTML = '<option value="">Sélectionner un jeu</option>';
     filterGameSelect.innerHTML = '<option value="all">Tous les jeux</option>';
+    adminGameSelect.innerHTML = '<option value="">Sélectionner un jeu</option>';
 
     allGames.forEach(g => {
       gameSelectAdmin.innerHTML += `<option value="${g.id}">${g.title}</option>`;
       gameSelectRun.innerHTML += `<option value="${g.id}">${g.title}</option>`;
       filterGameSelect.innerHTML += `<option value="${g.id}">${g.title}</option>`;
+      adminGameSelect.innerHTML += `<option value="${g.id}">${g.title}</option>`;
     });
 
     loadCategoriesForRun();
+    loadAdminCategories();
     onFilterGameChange();
   }
 
@@ -337,7 +408,16 @@
     const gameId = document.getElementById('runGameSelect').value;
     const catSelect = document.getElementById('runCategorySelect');
     catSelect.innerHTML = '';
+    const filtered = allCategories.filter(c => c.game_id == gameId);
+    filtered.forEach(c => {
+      catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
+    });
+  }
 
+  function loadAdminCategories() {
+    const gameId = document.getElementById('adminGameSelect').value;
+    const catSelect = document.getElementById('adminCategorySelect');
+    catSelect.innerHTML = '';
     const filtered = allCategories.filter(c => c.game_id == gameId);
     filtered.forEach(c => {
       catSelect.innerHTML += `<option value="${c.id}">${c.name}</option>`;
@@ -375,6 +455,7 @@
     await loadGamesAndCategories();
   }
 
+  // Soumission joueur (mise en attente)
   async function submitRun() {
     const category_id = document.getElementById('runCategorySelect').value;
     const timeInput = document.getElementById('runTimeString').value;
@@ -402,11 +483,78 @@
       msg.innerText = error.message;
     } else {
       msg.style.color = '#22c55e';
-      msg.innerText = "Chrono envoyé ! En attente de validation par l'admin.";
+      msg.innerText = "Chrono soumis ! Il apparaîtra dès que l'admin l'aura vérifié.";
       document.getElementById('runTimeString').value = '';
       document.getElementById('runProof').value = '';
       if (currentProfile.role === 'admin') loadPendingRuns();
     }
+  }
+
+  // Ajout direct par l'admin pour un joueur
+  async function adminCreateRun() {
+    const user_id = document.getElementById('adminUserSelect').value;
+    const category_id = document.getElementById('adminCategorySelect').value;
+    const timeInput = document.getElementById('adminTimeInput').value;
+    const proof_url = document.getElementById('adminProofInput').value.trim();
+    const msg = document.getElementById('adminRunMsg');
+
+    const time_seconds = parseTimeToSeconds(timeInput);
+
+    if (!user_id || !category_id || time_seconds === null || time_seconds <= 0) {
+      msg.style.color = '#ef4444';
+      msg.innerText = "Formulaire incomplet ou chrono invalide.";
+      return;
+    }
+
+    const { error } = await supabaseClient.from('runs').insert([{
+      user_id,
+      category_id,
+      time_seconds,
+      proof_url,
+      status: 'verified' // Directement vérifié par l'admin
+    }]);
+
+    if (error) {
+      msg.style.color = '#ef4444';
+      msg.innerText = error.message;
+    } else {
+      msg.style.color = '#22c55e';
+      msg.innerText = "Temps ajouté et validé directement !";
+      document.getElementById('adminTimeInput').value = '';
+      document.getElementById('adminProofInput').value = '';
+      await fetchLeaderboard();
+    }
+  }
+
+  // Modification directe d'un temps par l'admin depuis le classement
+  async function editRun(runId, currentSeconds) {
+    const currentFormatted = formatSecondsToTime(currentSeconds);
+    const newTime = prompt("Modifier le chrono (format MM:SS.ms) :", currentFormatted);
+    if (!newTime) return;
+
+    const parsed = parseTimeToSeconds(newTime);
+    if (parsed === null || parsed <= 0) {
+      alert("Format invalide.");
+      return;
+    }
+
+    const { error } = await supabaseClient
+      .from('runs')
+      .update({ time_seconds: parsed })
+      .eq('id', runId);
+
+    if (error) {
+      alert("Erreur lors de la modification : " + error.message);
+    } else {
+      await fetchLeaderboard();
+    }
+  }
+
+  // Suppression d'une run par l'admin
+  async function deleteRun(runId) {
+    if (!confirm("Voulez-vous vraiment supprimer ce temps ?")) return;
+    const { error } = await supabaseClient.from('runs').delete().eq('id', runId);
+    if (!error) await fetchLeaderboard();
   }
 
   async function fetchLeaderboard() {
@@ -431,6 +579,7 @@
     const gameFilter = document.getElementById('filterGameSelect').value;
     const catFilter = document.getElementById('filterCategorySelect').value;
     const tbody = document.getElementById('leaderboardBody');
+    const isAdmin = currentProfile?.role === 'admin';
 
     let filtered = verifiedRuns.filter(r => {
       const matchesGame = (gameFilter === 'all') || (r.categories?.games?.id == gameFilter);
@@ -441,7 +590,7 @@
     tbody.innerHTML = '';
 
     if (filtered.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6">Aucun score pour cette sélection.</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="${isAdmin ? 7 : 6}">Aucun score pour cette sélection.</td></tr>`;
       return;
     }
 
@@ -458,12 +607,19 @@
           <td>${r.categories?.name || '-'}</td>
           <td><strong>${r.profiles?.username || 'Anonyme'}</strong></td>
           <td style="font-family: monospace; font-size: 1.05rem; color: #38bdf8;">${formatSecondsToTime(r.time_seconds)}</td>
-          <td>${r.proof_url ? `<a href="${r.proof_url}" target="_blank" style="color:#60a5fa;">Lien vidéo</a>` : '-'}</td>
+          <td>${r.proof_url ? `<a href="${r.proof_url}" target="_blank" style="color:#60a5fa; text-decoration: underline;">Voir la vidéo</a>` : '-'}</td>
+          ${isAdmin ? `
+            <td>
+              <button class="btn-sm secondary-btn" onclick="editRun(${r.id}, ${r.time_seconds})">✏️ Éditer</button>
+              <button class="btn-sm btn-danger" onclick="deleteRun(${r.id})">🗑️</button>
+            </td>
+          ` : ''}
         </tr>
       `;
     });
   }
 
+  // LISTE D'ATTENTE AVEC PSEUDO + TEMPS + LIEN YOUTUBE
   async function loadPendingRuns() {
     const { data: runs } = await supabaseClient
       .from('runs')
@@ -474,27 +630,40 @@
         categories ( name, games ( title ) ),
         profiles ( username )
       `)
-      .eq('status', 'pending');
+      .eq('status', 'pending')
+      .order('created_at', { ascending: true });
 
     const container = document.getElementById('pendingRunsList');
     container.innerHTML = '';
 
     if (!runs || runs.length === 0) {
-      container.innerHTML = '<p style="color:#94a3b8;">Aucune run en attente.</p>';
+      container.innerHTML = '<p style="color:#94a3b8;">Aucune run en attente de vérification.</p>';
       return;
     }
 
     runs.forEach(r => {
+      const pseudo = r.profiles?.username || 'Inconnu';
+      const chrono = formatSecondsToTime(r.time_seconds);
+      const gameInfo = `${r.categories?.games?.title || '-'} (${r.categories?.name || '-'})`;
+      const proofLink = r.proof_url 
+        ? `<a href="${r.proof_url}" target="_blank" style="color:#38bdf8; font-weight:bold; text-decoration:underline;">📺 Voir la vidéo YouTube</a>`
+        : '<span style="color:#64748b;">(Aucun lien vidéo fourni)</span>';
+
       container.innerHTML += `
-        <div style="background:#0f172a; padding:10px; border-radius:6px; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+        <div class="pending-item">
           <div>
-            <strong>${r.profiles?.username}</strong> — ${r.categories?.games?.title} (${r.categories?.name}) : 
-            <strong style="color: #38bdf8; font-family: monospace;">${formatSecondsToTime(r.time_seconds)}</strong>
-            ${r.proof_url ? ` | <a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">Preuve</a>` : ''}
+            <span style="font-size: 1.05rem;">Joueur : <strong style="color:#f59e0b;">${pseudo}</strong></span>
+            &nbsp;|&nbsp;
+            <span>Temps : <strong style="color:#38bdf8; font-family:monospace; font-size:1.1rem;">${chrono}</strong></span>
+            &nbsp;|&nbsp;
+            <span>Jeu : <em>${gameInfo}</em></span>
+            <div style="margin-top: 5px;">
+              ${proofLink}
+            </div>
           </div>
           <div>
-            <button class="btn-success" onclick="updateRunStatus(${r.id}, 'verified')">Valider</button>
-            <button class="btn-danger" onclick="updateRunStatus(${r.id}, 'rejected')">Rejeter</button>
+            <button class="btn-success" onclick="updateRunStatus(${r.id}, 'verified')">✅ Valider</button>
+            <button class="btn-danger" onclick="updateRunStatus(${r.id}, 'rejected')">❌ Rejeter</button>
           </div>
         </div>
       `;
