@@ -261,6 +261,15 @@
     return `${clean}@speedrun.com`;
   }
 
+  // Vérification de la session au chargement
+  window.addEventListener('DOMContentLoaded', async () => {
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if (session) {
+      currentUser = session.user;
+      await initApp();
+    }
+  });
+
   async function login() {
     const pseudo = document.getElementById('username').value.trim();
     const password = document.getElementById('password').value;
