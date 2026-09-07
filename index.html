@@ -17,7 +17,7 @@
     }
     .container {
       width: 100%;
-      max-width: 900px;
+      max-width: 950px;
     }
     .card {
       background: #1e293b;
@@ -38,7 +38,7 @@
       box-sizing: border-box;
     }
     button {
-      padding: 10px 16px;
+      padding: 8px 14px;
       border-radius: 6px;
       border: none;
       background: #3b82f6;
@@ -51,6 +51,8 @@
     .btn-danger:hover { background: #dc2626; }
     .btn-success { background: #22c55e; }
     .btn-success:hover { background: #16a34a; }
+    .btn-edit { background: #6366f1; }
+    .btn-edit:hover { background: #4f46e5; }
     .secondary-btn { background: #475569; }
     .header {
       display: flex;
@@ -218,7 +220,7 @@
         </div>
       </div>
 
-      <button style="margin-top: 12px;" onclick="submitRun()">Envoyer le chrono</button>
+      <button style="margin-top: 12px; width: 100%;" onclick="submitRun()">Envoyer le chrono</button>
       <div id="runMsg" style="margin-top: 8px; font-size: 0.9rem;"></div>
     </div>
 
@@ -234,10 +236,11 @@
             <th>Joueur</th>
             <th>Temps</th>
             <th>Preuve</th>
+            <th id="thAdminAction" class="hidden">Actions</th>
           </tr>
         </thead>
         <tbody id="leaderboardBody">
-          <tr><td colspan="6">Chargement des scores...</td></tr>
+          <tr><td colspan="7">Chargement des scores...</td></tr>
         </tbody>
       </table>
     </div>
@@ -261,7 +264,6 @@
     return `${clean}@speedrun.com`;
   }
 
-  // Vérification de la session au chargement
   window.addEventListener('DOMContentLoaded', async () => {
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (session) {
@@ -320,6 +322,7 @@
       badge.classList.add('badge-admin');
       document.getElementById('adminPanel').classList.remove('hidden');
       document.getElementById('adminUserSelector').classList.remove('hidden');
+      document.getElementById('thAdminAction').classList.remove('hidden');
       await loadProfilesForAdmin();
       loadPendingRuns();
     }
@@ -451,8 +454,10 @@
     const tbody = document.getElementById('leaderboardBody');
     tbody.innerHTML = '';
 
+    const isAdmin = currentProfile && currentProfile.role === 'admin';
+
     if (!runs || runs.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6">Aucun chrono validé pour le moment.</td></tr>';
+      tbody.innerHTML = `<tr><td colspan="${isAdmin ? 7 : 6}">Aucun chrono validé pour le moment.</td></tr>`;
       return;
     }
 
@@ -467,6 +472,16 @@
         rowClass = 'row-btt';
       }
 
+      let actionsHtml = '';
+      if (isAdmin) {
+        actionsHtml = `
+          <td>
+            <button class="btn-edit" onclick="editRunTime(${r.id}, '${r.time_seconds}')">✏️ Modifier</button>
+            <button class="btn-danger" onclick="deleteRun(${r.id})">🗑️</button>
+          </td>
+        `;
+      }
+
       tbody.innerHTML += `
         <tr class="${rowClass}">
           <td>${tagBadge}</td>
@@ -475,6 +490,7 @@
           <td>${r.profiles?.username || 'Anonyme'}</td>
           <td><strong style="font-family:monospace; font-size:1.1rem; letter-spacing: 0.5px;">${r.time_seconds}</strong></td>
           <td>${r.proof_url ? `<a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">Voir vidéo</a>` : '-'}</td>
+          ${actionsHtml}
         </tr>
       `;
     });
@@ -517,20 +533,39 @@
       }
 
       container.innerHTML += `
-        <div class="${blockClass}" style="background:#0f172a; border-left: 5px solid ${borderStyle}; padding:12px; border-radius:6px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center;">
+        <div class="${blockClass}" style="background:#0f172a; border-left: 5px solid ${borderStyle}; padding:12px; border-radius:6px; margin-bottom:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
           <div>
             ${tagBadge ? tagBadge + ' ' : ''}
             <strong>${r.profiles?.username}</strong> — ${r.categories?.games?.title} (${r.categories?.name}) : 
             <strong style="color:#38bdf8; font-family:monospace; font-size:1.1rem;">${r.time_seconds}</strong>
             ${r.proof_url ? ` | <a href="${r.proof_url}" target="_blank" style="color:#38bdf8;">📺 Lien vidéo</a>` : ''}
           </div>
-          <div style="display:flex; gap:8px;">
+          <div style="display:flex; gap:6px;">
+            <button class="btn-edit" onclick="editRunTime(${r.id}, '${r.time_seconds}')">✏️ Modifier</button>
             <button class="btn-success" onclick="updateRunStatus(${r.id}, 'verified')">✅ Valider</button>
             <button class="btn-danger" onclick="updateRunStatus(${r.id}, 'rejected')">❌ Rejeter</button>
           </div>
         </div>
       `;
     });
+  }
+
+  // MODIFIER LE TEMPS D'UNE RUN
+  async function editRunTime(runId, currentVal) {
+    const newTime = prompt("Corriger le temps :", currentVal);
+    if (newTime !== null && newTime.trim() !== '') {
+      await supabaseClient.from('runs').update({ time_seconds: newTime.trim() }).eq('id', runId);
+      loadPendingRuns();
+      loadLeaderboard();
+    }
+  }
+
+  // SUPPRIMER UNE RUN DU CLASSEMENT
+  async function deleteRun(runId) {
+    if (confirm("Supprimer définitivement ce chrono ?")) {
+      await supabaseClient.from('runs').delete().eq('id', runId);
+      loadLeaderboard();
+    }
   }
 
   async function updateRunStatus(runId, status) {
