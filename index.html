@@ -68,7 +68,6 @@
     }
     .badge-admin { background: #eab308; color: black; }
     
-    /* BADGES WR ET BTT */
     .badge-wr {
       background: #ef4444;
       color: white;
@@ -86,7 +85,6 @@
       display: inline-block;
     }
 
-    /* COULEURS DES LIGNES */
     .row-wr {
       background: rgba(239, 68, 68, 0.18) !important;
       border-left: 4px solid #ef4444;
@@ -136,7 +134,7 @@
 
 <div class="container">
 
-  <!-- VUE CONNEXION -->
+  <!-- CONNEXION -->
   <div class="card" id="authSection" style="max-width: 400px; margin: 60px auto;">
     <h1 style="text-align: center;">⏱️ Speedrun Tracker</h1>
     <input type="text" id="username" placeholder="Pseudo du joueur" autocomplete="username" />
@@ -145,7 +143,7 @@
     <div id="authMsg" style="margin-top: 10px; font-size: 0.9rem; text-align: center;"></div>
   </div>
 
-  <!-- VUE PRINCIPALE -->
+  <!-- APPLICATION -->
   <div id="appSection" class="hidden">
     <div class="header">
       <div>
@@ -180,7 +178,6 @@
     <div class="card">
       <h3>🚀 Soumettre un chrono</h3>
 
-      <!-- CHAMP ADMIN : CHOIX DU JOUEUR -->
       <div id="adminUserSelector" class="hidden" style="background:#0f172a; padding: 10px; border-radius: 8px; margin-bottom: 12px; border: 1px dashed #eab308;">
         <label style="color:#eab308; font-weight:bold;">👑 Soumettre pour le joueur :</label>
         <select id="submitForUser"></select>
@@ -203,8 +200,8 @@
 
       <div class="grid-2" style="margin-top: 10px;">
         <div>
-          <label>Temps (format <code>MM:SS.ms</code> ou <code>SS.ms</code>) :</label>
-          <input type="text" id="runTime" placeholder="Ex: 04:48.500 ou 12.350" />
+          <label>Temps (ex: <code>04:48.520</code> ou <code>48.120</code>) :</label>
+          <input type="text" id="runTime" placeholder="MM:SS.ms ou SS.ms" />
         </div>
         <div>
           <label>Lien de la preuve (YouTube, Twitch) :</label>
@@ -212,7 +209,6 @@
         </div>
       </div>
 
-      <!-- OPTION WR OU BTT SEGMENT -->
       <div style="margin-top: 10px;">
         <label style="font-weight: bold;">Mention spéciale :</label>
         <div class="radio-group">
@@ -226,7 +222,7 @@
       <div id="runMsg" style="margin-top: 8px; font-size: 0.9rem;"></div>
     </div>
 
-    <!-- CLASSEMENT OFFICIEL -->
+    <!-- CLASSEMENT -->
     <div class="card">
       <h3>🏆 Classement officiel</h3>
       <table>
@@ -265,33 +261,42 @@
     return `${clean}@speedrun.com`;
   }
 
-  // Conversion MM:SS.ms ou SS.ms en secondes à virgule flottante
   function parseTimeToSeconds(inputStr) {
     if (!inputStr) return null;
-    const parts = inputStr.trim().split(':');
-    let total = 0;
+    const clean = inputStr.trim().replace(',', '.');
+    const parts = clean.split(':');
+    let totalSeconds = 0;
+
     if (parts.length === 2) {
-      const minutes = parseFloat(parts[0]);
-      const seconds = parseFloat(parts[1]);
+      const minutes = Number(parts[0]);
+      const seconds = Number(parts[1]);
       if (isNaN(minutes) || isNaN(seconds)) return null;
-      total = (minutes * 60) + seconds;
+      totalSeconds = (minutes * 60) + seconds;
     } else if (parts.length === 1) {
-      total = parseFloat(parts[0]);
-      if (isNaN(total)) return null;
+      totalSeconds = Number(parts[0]);
+      if (isNaN(totalSeconds)) return null;
     } else {
       return null;
     }
-    return Math.round(total * 1000) / 1000;
+
+    return Number(totalSeconds.toFixed(3));
   }
 
-  // Formatage propre avec 3 décimales
-  function formatSecondsToTime(totalSeconds) {
-    if (totalSeconds === null || totalSeconds === undefined) return '-';
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = (totalSeconds % 60).toFixed(3);
-    const minsStr = mins < 10 ? '0' + mins : mins;
-    const secsStr = parseFloat(secs) < 10 ? '0' + secs : secs;
-    return `${minsStr}:${secsStr}`;
+  function formatSecondsToTime(val) {
+    const num = Number(val);
+    if (isNaN(num)) return '-';
+
+    const totalMs = Math.round(num * 1000);
+    const ms = totalMs % 1000;
+    const totalSecs = Math.floor(totalMs / 1000);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+
+    const formattedMins = String(mins).padStart(2, '0');
+    const formattedSecs = String(secs).padStart(2, '0');
+    const formattedMs = String(ms).padStart(3, '0');
+
+    return `${formattedMins}:${formattedSecs}.${formattedMs}`;
   }
 
   async function login() {
@@ -418,12 +423,11 @@
     const time_seconds = parseTimeToSeconds(rawTime);
     const proof_url = document.getElementById('runProof').value.trim();
     const msg = document.getElementById('runMsg');
-
     const selectedTag = document.querySelector('input[name="runTag"]:checked')?.value || null;
 
     if (!category_id || time_seconds === null) {
       msg.style.color = '#ef4444';
-      msg.innerText = "Saisis une catégorie et un chrono valide (ex: 04:48.500).";
+      msg.innerText = "Format invalide. Exemple attendu : 04:48.520";
       return;
     }
 
